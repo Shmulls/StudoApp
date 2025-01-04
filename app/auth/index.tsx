@@ -1,5 +1,6 @@
 import SocialLoginButton from "@/components/SocialLoginButton";
 import { useSignIn } from "@clerk/clerk-expo";
+import { useRouter } from "expo-router"; // Import router for navigation
 import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
 import {
@@ -14,7 +15,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 WebBrowser.maybeCompleteAuthSession();
 
 const AuthScreen = () => {
-  const { signIn, setActive } = useSignIn(); // Use `useSignIn` instead of `useAuth`
+  const { signIn, setActive } = useSignIn();
+  const router = useRouter(); // Initialize router for navigation
   const insets = useSafeAreaInsets();
 
   const [email, setEmail] = useState("");
@@ -87,6 +89,10 @@ const AuthScreen = () => {
         <Text style={styles.buttonText}>Login</Text>
       </TouchableOpacity>
 
+      <TouchableOpacity onPress={() => router.push("/auth/signup")}>
+        <Text style={styles.signupText}>Not registered? Sign up now!</Text>
+      </TouchableOpacity>
+
       {/* Social Login Button (Google Only) */}
       <View style={styles.socialButtonsContainer}>
         <SocialLoginButton strategy="google" />
@@ -138,6 +144,12 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "white",
     fontSize: 16,
+  },
+  signupText: {
+    color: "blue",
+    textAlign: "center",
+    marginTop: 10,
+    textDecorationLine: "underline",
   },
   errorText: {
     color: "red",
