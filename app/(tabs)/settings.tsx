@@ -8,8 +8,8 @@ const SettingsScreen = () => {
     <View style={styles.container}>
       <SignedIn>
         <Text>Email: {user?.emailAddresses[0]?.emailAddress}</Text>
-        <Text>Full Name: {user?.fullName}</Text>
-        <Text>username: {user?.username || "N/A"}</Text>
+        <Text>Full Name: {user?.fullName || "Not Provided"}</Text>
+        <Text>Username: {user?.username || "N/A"}</Text>
         <Button title="Logout" onPress={() => signOut()} />
       </SignedIn>
     </View>

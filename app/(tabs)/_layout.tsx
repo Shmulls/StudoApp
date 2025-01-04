@@ -1,7 +1,7 @@
+import { useAuth, useUser } from "@clerk/clerk-expo";
+import { Ionicons } from "@expo/vector-icons";
 import { Redirect, Tabs } from "expo-router";
 import { Platform } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useAuth, useUser } from "@clerk/clerk-expo";
 
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
@@ -15,9 +15,9 @@ export default function TabLayout() {
     return <Redirect href="/auth" />;
   }
 
-  if (isSignedIn && user?.unsafeMetadata?.onboarding_completed !== true) {
-    return <Redirect href="/auth/complete-your-account" />;
-  }
+  // if (isSignedIn && user?.unsafeMetadata?.onboarding_completed !== true) {
+  //   return <Redirect href="/auth/complete-your-account" />;
+  // }
 
   return (
     <Tabs

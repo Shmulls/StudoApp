@@ -6,10 +6,15 @@ export default function AuthLayout() {
   const pathName = usePathname();
   const { isSignedIn } = useAuth();
 
-  if (isSignedIn && user?.unsafeMetadata?.onboarding_completed !== true) {
-    if (pathName !== "/auth/complete-your-account") {
-      return <Redirect href="/auth/complete-your-account" />;
-    }
+  // Shmuel change
+  // if (isSignedIn && user?.unsafeMetadata?.onboarding_completed !== true) {
+  //   if (pathName !== "/auth/complete-your-account") {
+  //     return <Redirect href="/auth/complete-your-account" />;
+  //   }
+  // }
+
+  if (isSignedIn) {
+    return <Redirect href="/(tabs)" />;
   }
 
   if (isSignedIn && user?.unsafeMetadata?.onboarding_completed === true) {

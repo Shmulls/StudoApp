@@ -1,8 +1,8 @@
 import SocialLoginButton from "@/components/SocialLoginButton";
-import { StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect } from "react";
+import { StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export const useWarmUpBrowser = () => {
   useEffect(() => {
