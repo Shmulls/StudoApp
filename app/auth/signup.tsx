@@ -1,6 +1,6 @@
 import { useSignUp } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -10,56 +10,95 @@ import {
 } from "react-native";
 
 const SignUpScreen = () => {
-  const { signUp } = useSignUp();
+  const { signUp, setActive, isLoaded } = useSignUp();
   const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [pendingVerification, setPendingVerification] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSignUp = async () => {
-    setError(""); // Reset error message
-    try {
-      if (signUp) {
-        await signUp.create({
-          emailAddress: email,
-          password,
-        });
+    setError("");
+    setLoading(true);
 
-        await signUp.prepareEmailAddressVerification();
-        router.push("/"); // Redirect to login page
-      } else {
-        setError("Sign-up service is unavailable.");
-      }
-    } catch (err) {
-      setError("Sign-up failed. Please try again.");
+    try {
+      if (!isLoaded) throw new Error("Sign-up service is unavailable.");
+
+      // Create user
+      await signUp.create({ emailAddress: email, password });
+
+      // Initiate email verification
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      setPendingVerification(true);
+    } catch (err: any) {
+      setError(err.errors ? err.errors[0].message : "Sign-up failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerification = async () => {
+    setError("");
+    setLoading(true);
+
+    try {
+      if (!isLoaded) throw new Error("Verification service is unavailable.");
+
+      const completeSignUp = await signUp.attemptEmailAddressVerification({
+        code,
+      });
+      await setActive({ session: completeSignUp.createdSessionId });
+      router.push("/auth"); // Navigate to login
+    } catch (err: any) {
+      setError(err.errors ? err.errors[0].message : "Verification failed.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Sign Up</Text>
+      {!pendingVerification && (
+        <>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your email"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+          {error && <Text style={styles.errorText}>{error}</Text>}
+          <TouchableOpacity style={styles.button} onPress={handleSignUp}>
+            <Text style={styles.buttonText}>Sign Up</Text>
+          </TouchableOpacity>
+        </>
+      )}
 
-      <TextInput
-        style={styles.input}
-        placeholder="Enter your email"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Enter your password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-      <TouchableOpacity style={styles.signupButton} onPress={handleSignUp}>
-        <Text style={styles.buttonText}>Sign Up</Text>
-      </TouchableOpacity>
+      {pendingVerification && (
+        <>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter verification code"
+            value={code}
+            onChangeText={setCode}
+          />
+          {error && <Text style={styles.errorText}>{error}</Text>}
+          <TouchableOpacity style={styles.button} onPress={handleVerification}>
+            <Text style={styles.buttonText}>Verify Email</Text>
+          </TouchableOpacity>
+        </>
+      )}
     </View>
   );
 };
@@ -67,38 +106,9 @@ const SignUpScreen = () => {
 export default SignUpScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  label: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 20,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "gray",
-    borderRadius: 5,
-    padding: 10,
-    width: "100%",
-    marginBottom: 10,
-  },
-  signupButton: {
-    width: "100%",
-    backgroundColor: "blue",
-    padding: 10,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  buttonText: {
-    color: "white",
-    fontSize: 16,
-  },
-  errorText: {
-    color: "red",
-    marginTop: 10,
-  },
+  container: { flex: 1, justifyContent: "center", padding: 20 },
+  input: { borderWidth: 1, padding: 10, marginBottom: 10 },
+  button: { backgroundColor: "blue", padding: 10, alignItems: "center" },
+  buttonText: { color: "white", fontSize: 16 },
+  errorText: { color: "red", marginBottom: 10 },
 });

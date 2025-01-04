@@ -58,9 +58,9 @@ const AuthScreen = () => {
       ]}
     >
       <View style={styles.headingContainer}>
-        <Text style={styles.label}>Login on Dev Inteprid</Text>
+        <Text style={styles.label}>Welcome to Studo</Text>
         <Text style={styles.description}>
-          Start your journey with thousands of developers around the world.
+          Start your journey with thousands of Students around the world.
         </Text>
       </View>
 
@@ -87,6 +87,12 @@ const AuthScreen = () => {
       {/* Login Button */}
       <TouchableOpacity style={styles.loginButton} onPress={handleEmailLogin}>
         <Text style={styles.buttonText}>Login</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => router.push("/auth/reset-password")}>
+        <Text style={styles.forgotPasswordText}>
+          Forgot your password? Reset it here
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => router.push("/auth/signup")}>
@@ -159,5 +165,12 @@ const styles = StyleSheet.create({
     width: "100%",
     marginTop: 20,
     gap: 10,
+  },
+
+  forgotPasswordText: {
+    color: "blue",
+    textAlign: "center",
+    marginTop: 10,
+    textDecorationLine: "underline",
   },
 });
