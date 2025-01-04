@@ -1,9 +1,10 @@
 import SocialLoginButton from "@/components/SocialLoginButton";
 import { useSignIn } from "@clerk/clerk-expo";
-import { useRouter } from "expo-router"; // Import router for navigation
+import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { useState } from "react";
+import React, { useState } from "react";
 import {
+  Animated,
   Image,
   StyleSheet,
   Text,
@@ -17,15 +18,17 @@ WebBrowser.maybeCompleteAuthSession();
 
 const AuthScreen = () => {
   const { signIn, setActive } = useSignIn();
-  const router = useRouter(); // Initialize router for navigation
+  const router = useRouter();
   const insets = useSafeAreaInsets();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loginAttempts, setLoginAttempts] = useState(0);
+  const [forgotPasswordOpacity] = useState(new Animated.Value(0));
 
   const handleEmailLogin = async () => {
-    setError(""); // Reset error message
+    setError("");
     try {
       let createdSessionId;
       if (signIn) {
@@ -40,14 +43,21 @@ const AuthScreen = () => {
 
       if (createdSessionId) {
         if (setActive) {
-          await setActive({ session: createdSessionId }); // Set active session
+          await setActive({ session: createdSessionId });
         } else {
           setError("Failed to set active session.");
         }
-        // Navigate to the main app (e.g., "/(tabs)")
       }
     } catch (err) {
       setError("Login failed. Please check your credentials.");
+      setLoginAttempts((prev) => prev + 1);
+      if (loginAttempts === 0) {
+        Animated.timing(forgotPasswordOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+      }
     }
   };
 
@@ -55,10 +65,10 @@ const AuthScreen = () => {
     <View
       style={[
         styles.container,
-        { paddingTop: insets.top + 40, paddingBottom: insets.bottom },
+        { paddingTop: insets.top, paddingBottom: insets.bottom },
       ]}
     >
-      {/* Logo and Title */}
+      {/* Logo */}
       <Image
         source={require("../../assets/images/Studo.jpg")}
         style={styles.logo}
@@ -91,11 +101,14 @@ const AuthScreen = () => {
         <Text style={styles.loginButtonText}>Login in</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.push("/auth/reset-password")}>
-        <Text style={styles.forgotPasswordText}>
-          Forgot your password? Reset it here
-        </Text>
-      </TouchableOpacity>
+      {/* Animated Forgot Password Link */}
+      <Animated.View style={{ opacity: forgotPasswordOpacity }}>
+        <TouchableOpacity onPress={() => router.push("/auth/reset-password")}>
+          <Text style={styles.forgotPasswordText}>
+            Forgot your password? Reset it here
+          </Text>
+        </TouchableOpacity>
+      </Animated.View>
 
       {/* Divider */}
       <View style={styles.divider}>
@@ -123,19 +136,14 @@ export default AuthScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9CE60", // Yellow background from Figma design
+    backgroundColor: "#F9CE60", // Yellow background
     alignItems: "center",
-    padding: 20,
+    justifyContent: "center",
+    paddingHorizontal: 20,
   },
   logo: {
-    width: 180,
-    height: 180,
-    marginBottom: 10,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#333",
+    width: 120,
+    height: 120,
     marginBottom: 30,
   },
   formContainer: {
@@ -174,7 +182,7 @@ const styles = StyleSheet.create({
   divider: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    marginVertical: 20,
   },
   line: {
     flex: 1,
@@ -186,9 +194,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
   },
+  forgotPasswordText: {
+    color: "#0066cc",
+    textAlign: "center",
+    marginVertical: 10,
+    textDecorationLine: "underline",
+  },
   signUpText: {
     fontSize: 14,
     color: "#333",
+    marginTop: 20,
   },
   signUpLink: {
     color: "#0066cc",
@@ -198,12 +213,5 @@ const styles = StyleSheet.create({
   errorText: {
     color: "red",
     marginBottom: 10,
-  },
-
-  forgotPasswordText: {
-    color: "blue",
-    textAlign: "center",
-    marginTop: 10,
-    textDecorationLine: "underline",
   },
 });
