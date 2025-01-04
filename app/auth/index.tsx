@@ -4,6 +4,7 @@ import { useRouter } from "expo-router"; // Import router for navigation
 import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
 import {
+  Image,
   StyleSheet,
   Text,
   TextInput,
@@ -57,15 +58,15 @@ const AuthScreen = () => {
         { paddingTop: insets.top + 40, paddingBottom: insets.bottom },
       ]}
     >
-      <View style={styles.headingContainer}>
-        <Text style={styles.label}>Welcome to Studo</Text>
-        <Text style={styles.description}>
-          Start your journey with thousands of Students around the world.
-        </Text>
-      </View>
+      {/* Logo and Title */}
+      <Image
+        source={require("../../assets/images/Studo.jpg")}
+        style={styles.logo}
+      />
 
       {/* Email and Password Inputs */}
       <View style={styles.formContainer}>
+        <Text style={styles.label}>Email:</Text>
         <TextInput
           style={styles.input}
           placeholder="Enter your email"
@@ -74,6 +75,7 @@ const AuthScreen = () => {
           keyboardType="email-address"
           autoCapitalize="none"
         />
+        <Text style={styles.label}>Password:</Text>
         <TextInput
           style={styles.input}
           placeholder="Enter your password"
@@ -86,7 +88,7 @@ const AuthScreen = () => {
 
       {/* Login Button */}
       <TouchableOpacity style={styles.loginButton} onPress={handleEmailLogin}>
-        <Text style={styles.buttonText}>Login</Text>
+        <Text style={styles.loginButtonText}>Login in</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => router.push("/auth/reset-password")}>
@@ -95,14 +97,23 @@ const AuthScreen = () => {
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.push("/auth/signup")}>
-        <Text style={styles.signupText}>Not registered? Sign up now!</Text>
-      </TouchableOpacity>
-
-      {/* Social Login Button (Google Only) */}
-      <View style={styles.socialButtonsContainer}>
-        <SocialLoginButton strategy="google" />
+      {/* Divider */}
+      <View style={styles.divider}>
+        <View style={styles.line} />
+        <Text style={styles.dividerText}>Or continue with</Text>
+        <View style={styles.line} />
       </View>
+
+      {/* Social Login Button */}
+      <SocialLoginButton strategy="google" />
+
+      {/* Sign-Up Link */}
+      <TouchableOpacity onPress={() => router.push("/auth/signup")}>
+        <Text style={styles.signUpText}>
+          No registered yet?{" "}
+          <Text style={styles.signUpLink}>Create an account</Text>
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -112,59 +123,81 @@ export default AuthScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "white",
+    backgroundColor: "#F9CE60", // Yellow background from Figma design
+    alignItems: "center",
     padding: 20,
-    gap: 20,
   },
-  headingContainer: {
-    width: "100%",
-    gap: 5,
+  logo: {
+    width: 180,
+    height: 180,
+    marginBottom: 10,
   },
-  label: {
-    fontSize: 20,
+  title: {
+    fontSize: 28,
     fontWeight: "bold",
-  },
-  description: {
-    fontSize: 16,
-    color: "gray",
+    color: "#333",
+    marginBottom: 30,
   },
   formContainer: {
     width: "100%",
-    marginTop: 20,
-    gap: 10,
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 5,
   },
   input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "gray",
-    borderRadius: 5,
-    padding: 10,
     width: "100%",
+    height: 50,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    marginBottom: 15,
+    backgroundColor: "#fff",
   },
   loginButton: {
     width: "100%",
-    backgroundColor: "blue",
-    padding: 10,
+    height: 50,
+    backgroundColor: "#333",
     borderRadius: 10,
+    justifyContent: "center",
     alignItems: "center",
+    marginBottom: 20,
   },
-  buttonText: {
-    color: "white",
+  loginButtonText: {
+    color: "#fff",
     fontSize: 16,
+    fontWeight: "bold",
   },
-  signupText: {
-    color: "blue",
-    textAlign: "center",
-    marginTop: 10,
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  line: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#999",
+  },
+  dividerText: {
+    marginHorizontal: 10,
+    fontSize: 14,
+    color: "#666",
+  },
+  signUpText: {
+    fontSize: 14,
+    color: "#333",
+  },
+  signUpLink: {
+    color: "#0066cc",
+    fontWeight: "bold",
     textDecorationLine: "underline",
   },
   errorText: {
     color: "red",
-    marginTop: 5,
-  },
-  socialButtonsContainer: {
-    width: "100%",
-    marginTop: 20,
-    gap: 10,
+    marginBottom: 10,
   },
 
   forgotPasswordText: {
