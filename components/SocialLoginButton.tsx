@@ -78,8 +78,8 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   image: {
-    width: 400, // Adjust the width to fit your design
-    height: 50, // Adjust the height to fit your design
-    resizeMode: "contain",
+    width: 800, // Adjust to fit your design
+    height: 50, // Adjust to fit your design
+    resizeMode: "contain", // Prevents cropping
   },
 });

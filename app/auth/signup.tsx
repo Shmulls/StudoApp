@@ -106,9 +106,19 @@ const SignUpScreen = () => {
 export default SignUpScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", padding: 20 },
-  input: { borderWidth: 1, padding: 10, marginBottom: 10 },
-  button: { backgroundColor: "blue", padding: 10, alignItems: "center" },
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    padding: 20,
+    backgroundColor: "#F9CE60",
+  },
+  input: {
+    borderWidth: 1,
+    padding: 10,
+    marginBottom: 10,
+    borderColor: "white",
+  },
+  button: { backgroundColor: "#525252", padding: 10, alignItems: "center" },
   buttonText: { color: "white", fontSize: 16 },
   errorText: { color: "red", marginBottom: 10 },
 });

@@ -70,7 +70,7 @@ const AuthScreen = () => {
     >
       {/* Logo */}
       <Image
-        source={require("../../assets/images/Studo.jpg")}
+        source={require("../../assets/images/logoV2.png")}
         style={styles.logo}
       />
 
@@ -142,9 +142,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   logo: {
-    width: 120,
-    height: 120,
-    marginBottom: 30,
+    width: 250,
+    height: 250,
+    marginBottom: 15,
+    marginRight: 15,
   },
   formContainer: {
     width: "100%",
@@ -172,7 +173,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 10,
   },
   loginButtonText: {
     color: "#fff",
@@ -182,7 +183,7 @@ const styles = StyleSheet.create({
   divider: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 20,
+    marginBottom: 30,
   },
   line: {
     flex: 1,
