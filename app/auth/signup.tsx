@@ -82,6 +82,7 @@ const SignUpScreen = () => {
             autoCapitalize="none"
             keyboardType="email-address"
             placeholderTextColor="#888"
+            textContentType="none"
           />
           <TextInput
             style={styles.input}
@@ -90,6 +91,7 @@ const SignUpScreen = () => {
             onChangeText={setPassword}
             secureTextEntry
             placeholderTextColor="#888"
+            textContentType="none"
           />
           <TextInput
             style={styles.input}
