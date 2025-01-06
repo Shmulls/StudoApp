@@ -1,7 +1,9 @@
 import { useSignUp } from "@clerk/clerk-expo";
+import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
+  Modal,
   StyleSheet,
   Text,
   TextInput,
@@ -18,9 +20,10 @@ const SignUpScreen = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [ID, setID] = useState("");
   const [code, setCode] = useState("");
+  const [institution, setInstitution] = useState("");
+  const [showPicker, setShowPicker] = useState(false); // For controlling the modal
   const [pendingVerification, setPendingVerification] = useState(false);
   const [error, setError] = useState("");
-  const [Institution, setInstitution] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSignUp = async () => {
@@ -101,17 +104,55 @@ const SignUpScreen = () => {
             placeholder="Enter ID number"
             value={ID}
             onChangeText={setID}
-            secureTextEntry
             placeholderTextColor="#888"
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Enter educational institution"
-            value={Institution}
-            onChangeText={setInstitution}
-            secureTextEntry
-            placeholderTextColor="#888"
-          />
+
+          {/* Picker with Modal from @React-Native library */}
+          <TouchableOpacity
+            style={styles.pickerContainer}
+            onPress={() => setShowPicker(true)}
+          >
+            <Text style={styles.pickerText}>
+              {institution || "Select educational institution"}
+            </Text>
+          </TouchableOpacity>
+
+          <Modal visible={showPicker} animationType="slide" transparent={true}>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Select Institution</Text>
+                <Picker
+                  selectedValue={institution}
+                  onValueChange={(itemValue) => {
+                    setInstitution(itemValue);
+                    setShowPicker(false); // Close the modal on selection
+                  }}
+                  style={styles.modalPicker} // Add styles for better visibility
+                >
+                  <Picker.Item
+                    label="Select educational institution"
+                    value=""
+                  />
+                  <Picker.Item
+                    label="Sami Shamoon College of Engineering"
+                    value="Sami Shamoon College of Engineering"
+                  />
+                  <Picker.Item label="Afeka" value="Afeka" />
+                  <Picker.Item
+                    label="Ashkelon Academic College"
+                    value="Ashkelon Academic College"
+                  />
+                </Picker>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setShowPicker(false)}
+                >
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+
           {error && <Text style={styles.errorText}>{error}</Text>}
           <TouchableOpacity style={styles.button} onPress={handleSignUp}>
             <Text style={styles.buttonText}>Sign Up</Text>
@@ -146,14 +187,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#FAD961", // Enhanced yellow background
+    backgroundColor: "#FAD961",
     padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 30,
   },
   input: {
     width: "100%",
@@ -164,6 +199,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     marginBottom: 15,
     backgroundColor: "#fff",
+  },
+  pickerContainer: {
+    width: "100%",
+    height: 50,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    justifyContent: "center",
+    backgroundColor: "#fff",
+    marginBottom: 15,
+  },
+  pickerText: {
+    color: "#888",
   },
   button: {
     width: "100%",
@@ -183,5 +232,40 @@ const styles = StyleSheet.create({
     color: "red",
     marginBottom: 10,
     textAlign: "center",
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)", // Dimmed background
+  },
+  modalContent: {
+    width: "80%",
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    padding: 20,
+    alignItems: "center",
+  },
+  modalTitle: {
+    fontSize: 18, // Larger font size
+    fontWeight: "bold", // Bold text
+    marginBottom: 10, // Space between title and picker
+  },
+  modalPicker: {
+    width: "100%", // Full width
+    height: 150, // height of the picker
+    marginBottom: 20, // Space between picker and close button
+  },
+  closeButton: {
+    width: "100%", // Full width
+    padding: 10, // Padding around the text
+    backgroundColor: "#333", // Background color
+    borderRadius: 10, // Rounded corners
+    alignItems: "center", // Center the text horizontally
+  },
+  closeButtonText: {
+    color: "#fff", // White text color
+    fontSize: 16, // Larger font size
+    fontWeight: "bold", // Bold text
   },
 });
