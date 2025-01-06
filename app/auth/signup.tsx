@@ -15,15 +15,22 @@ const SignUpScreen = () => {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [ID, setID] = useState("");
   const [code, setCode] = useState("");
   const [pendingVerification, setPendingVerification] = useState(false);
   const [error, setError] = useState("");
+  const [Institution, setInstitution] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSignUp = async () => {
     setError("");
-    setLoading(true);
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
 
+    setLoading(true);
     try {
       if (!isLoaded) throw new Error("Sign-up service is unavailable.");
 
@@ -61,6 +68,7 @@ const SignUpScreen = () => {
 
   return (
     <View style={styles.container}>
+      {/* Input Fields */}
       {!pendingVerification && (
         <>
           <TextInput
@@ -70,6 +78,7 @@ const SignUpScreen = () => {
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
+            placeholderTextColor="#888"
           />
           <TextInput
             style={styles.input}
@@ -77,6 +86,31 @@ const SignUpScreen = () => {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            placeholderTextColor="#888"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Re-enter your password"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
+            placeholderTextColor="#888"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Enter ID number"
+            value={ID}
+            onChangeText={setID}
+            secureTextEntry
+            placeholderTextColor="#888"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Enter educational institution"
+            value={Institution}
+            onChangeText={setInstitution}
+            secureTextEntry
+            placeholderTextColor="#888"
           />
           {error && <Text style={styles.errorText}>{error}</Text>}
           <TouchableOpacity style={styles.button} onPress={handleSignUp}>
@@ -85,6 +119,7 @@ const SignUpScreen = () => {
         </>
       )}
 
+      {/* Verification Step */}
       {pendingVerification && (
         <>
           <TextInput
@@ -92,6 +127,7 @@ const SignUpScreen = () => {
             placeholder="Enter verification code"
             value={code}
             onChangeText={setCode}
+            placeholderTextColor="#888"
           />
           {error && <Text style={styles.errorText}>{error}</Text>}
           <TouchableOpacity style={styles.button} onPress={handleVerification}>
@@ -109,16 +145,43 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FAD961", // Enhanced yellow background
     padding: 20,
-    backgroundColor: "#F9CE60",
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 30,
   },
   input: {
+    width: "100%",
+    height: 50,
     borderWidth: 1,
-    padding: 10,
-    marginBottom: 10,
-    borderColor: "white",
+    borderColor: "#ddd",
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    marginBottom: 15,
+    backgroundColor: "#fff",
   },
-  button: { backgroundColor: "#525252", padding: 10, alignItems: "center" },
-  buttonText: { color: "white", fontSize: 16 },
-  errorText: { color: "red", marginBottom: 10 },
+  button: {
+    width: "100%",
+    height: 50,
+    backgroundColor: "#333",
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 10,
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  errorText: {
+    color: "red",
+    marginBottom: 10,
+    textAlign: "center",
+  },
 });
