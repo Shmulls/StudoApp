@@ -2,6 +2,7 @@ import { useUser } from "@clerk/clerk-expo";
 import React, { useState } from "react";
 import {
   FlatList,
+  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -11,7 +12,6 @@ import * as Progress from "react-native-progress";
 
 const HomeScreen = () => {
   const { user } = useUser();
-  // const [time, setTime] = useState(new Date());
   const [tasks, setTasks] = useState([
     {
       id: 1,
@@ -33,13 +33,6 @@ const HomeScreen = () => {
     },
   ]);
 
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //   //   setTime(new Date());
-  //   // }, 1000);
-  //   return () => clearInterval(interval);
-  // }, []);
-
   const handleSignUp = (taskId: number) => {
     setTasks((prevTasks) =>
       prevTasks.map((task) =>
@@ -52,11 +45,8 @@ const HomeScreen = () => {
     <View style={styles.container}>
       {/* Header Section */}
       <View style={styles.header}>
-        {/* <Avatar>
-          <AvatarImage src="https://github.com/shadcn.png" />
-          <AvatarFallback>CN</AvatarFallback>
-        </Avatar> */}
-        {/* <Text style={styles.date}>{time.toDateString()}</Text> */}
+        <Image source={{ uri: user?.imageUrl }} style={styles.profileImage} />
+        <Text style={styles.menuIcon}>☰</Text>
       </View>
 
       {/* Progress Bar */}
@@ -74,7 +64,7 @@ const HomeScreen = () => {
 
       {/* Task Section */}
       <Text style={styles.tasksTitle}>
-        Volunteers available in your area (1)
+        Volunteers available in your area ({tasks.length})
       </Text>
       <FlatList
         data={tasks}
@@ -125,14 +115,16 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
+    borderColor: "#fff",
+    borderWidth: 2,
+    marginTop: 60,
   },
-  date: {
-    fontSize: 18,
-    fontWeight: "600",
+  menuIcon: {
+    fontSize: 24,
     color: "#333",
   },
   progressContainer: {
-    marginBottom: 20,
+    marginBottom: 30,
   },
   progressTitle: {
     fontSize: 18,
@@ -148,7 +140,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   taskCard: {
-    backgroundColor: "#fff",
+    borderColor: "#000",
+    borderWidth: 1,
     borderRadius: 10,
     padding: 15,
     marginBottom: 15,
@@ -156,9 +149,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 5,
     elevation: 2,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   taskInfo: {
-    marginBottom: 10,
+    flex: 1,
+    marginRight: 10,
   },
   taskTitle: {
     fontSize: 16,
@@ -178,10 +175,9 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   taskButton: {
-    alignSelf: "flex-end",
     backgroundColor: "#333",
-    paddingVertical: 5,
-    paddingHorizontal: 15,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
     borderRadius: 5,
   },
   taskButtonCompleted: {
