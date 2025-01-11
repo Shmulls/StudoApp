@@ -1,4 +1,7 @@
 import { useUser } from "@clerk/clerk-expo";
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   FlatList,
@@ -12,6 +15,7 @@ import * as Progress from "react-native-progress";
 
 const HomeScreen = () => {
   const { user } = useUser();
+  const navigation = useNavigation();
   const [tasks, setTasks] = useState([
     {
       id: 1,
@@ -46,7 +50,20 @@ const HomeScreen = () => {
       {/* Header Section */}
       <View style={styles.header}>
         <Image source={{ uri: user?.imageUrl }} style={styles.profileImage} />
-        <Text style={styles.menuIcon}>☰</Text>
+        <View style={styles.headerIcons}>
+          {/* Home icon disabled from home page - may re-used for refresh button */}
+          {/* <TouchableOpacity onPress={() => router.push("/")}>
+            <Ionicons name="home" size={24} color="#333" style={styles.icon} />
+          </TouchableOpacity> */}
+          <TouchableOpacity onPress={() => router.push("/settings")}>
+            <Ionicons
+              name="settings-outline"
+              size={24}
+              color="#333"
+              style={styles.icon}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Progress Bar */}
@@ -128,6 +145,14 @@ const styles = StyleSheet.create({
     borderColor: "#fff",
     borderWidth: 2,
     marginTop: 60,
+  },
+  headerIcons: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 60,
+  },
+  icon: {
+    marginLeft: 20,
   },
   menuIcon: {
     fontSize: 24,
