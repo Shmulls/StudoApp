@@ -87,7 +87,17 @@ const HomeScreen = () => {
               onPress={() => handleSignUp(item.id)}
             >
               <Text style={styles.taskButtonText}>
-                {item.signedUp ? "✅" : "Sign up"}
+                {item.signedUp ? (
+                  <Image
+                    source={require("../../assets/images/checked.png")}
+                    style={styles.checkedICON}
+                  />
+                ) : (
+                  <Image
+                    source={require("../../assets/images/sign-up.png")}
+                    style={styles.signupICON}
+                  />
+                )}
               </Text>
             </TouchableOpacity>
           </View>
@@ -132,6 +142,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   progressBar: {
+    borderColor: "#00000",
+    borderRadius: 5,
     width: "100%",
   },
   tasksTitle: {
@@ -167,6 +179,15 @@ const styles = StyleSheet.create({
     color: "#666",
     marginBottom: 5,
   },
+  checkedICON: {
+    width: 30,
+    height: 30,
+  },
+  signupICON: {
+    // width: 50,
+    // height: 30,
+    right: 10,
+  },
   taskDetails: {
     fontSize: 12,
     color: "#333",
@@ -175,13 +196,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   taskButton: {
-    backgroundColor: "#333",
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 5,
+    position: "absolute",
+    right: 20,
+    bottom: 8,
   },
   taskButtonCompleted: {
-    backgroundColor: "#4CAF50",
+    // backgroundColor: "#4CAF50",
   },
   taskButtonText: {
     color: "#fff",
