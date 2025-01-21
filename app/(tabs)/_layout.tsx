@@ -1,8 +1,7 @@
-import { useAuth, useUser } from "@clerk/clerk-expo";
+import { useAuth } from "@clerk/clerk-expo";
 import { Redirect, Stack } from "expo-router";
 
 export default function TabLayout() {
-  const { user } = useUser();
   const { isSignedIn } = useAuth();
 
   if (!isSignedIn) {
@@ -12,11 +11,11 @@ export default function TabLayout() {
   return (
     <Stack
       screenOptions={{
-        headerShown: false,
+        headerShown: false, // Ensure headers are hidden if needed
       }}
     >
-      <Stack.Screen name="index" />
-      <Stack.Screen name="settings" />
+      <Stack.Screen name="home/index" /> {/* Home Screen */}
+      <Stack.Screen name="settings/index" /> {/* Settings Screen */}
     </Stack>
   );
 }

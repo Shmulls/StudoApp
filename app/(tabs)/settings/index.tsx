@@ -19,7 +19,7 @@ const SettingsScreen = () => {
       <View style={styles.header}>
         <Image source={{ uri: user?.imageUrl }} style={styles.profileImage} />
         <View style={styles.headerIcons}>
-          <TouchableOpacity onPress={() => router.push("/")}>
+          <TouchableOpacity onPress={() => router.push("/home")}>
             <Ionicons name="home" size={24} color="#333" style={styles.icon} />
           </TouchableOpacity>
         </View>

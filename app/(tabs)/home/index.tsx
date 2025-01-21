@@ -10,8 +10,8 @@ import {
   View,
 } from "react-native";
 import * as Progress from "react-native-progress";
-import { fetchTasks, updateTask } from "../../api";
-import { Task } from "../../types/task";
+import { fetchTasks, updateTask } from "../../../api";
+import { Task } from "../../../types/task";
 
 const HomeScreen = () => {
   const { user } = useUser();
