@@ -46,8 +46,20 @@ export default function RootLayout() {
           value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
         >
           <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="auth" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="(tabs)"
+              options={{
+                headerShown: false,
+              }}
+            />{" "}
+            // Protected routes
+            <Stack.Screen
+              name="auth"
+              options={{
+                headerShown: false,
+              }}
+            />{" "}
+            // Public routes
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>
@@ -55,3 +67,13 @@ export default function RootLayout() {
     </ClerkProvider>
   );
 }
+
+// app/(tabs)/_layout.tsx (Protected Routes)
+const TabLayout = () => {
+  return (
+    <Stack>
+      <Stack.Screen name="index" /> // Home
+      <Stack.Screen name="settings" /> // Settings
+    </Stack>
+  );
+};

@@ -6,27 +6,29 @@ export default function AuthLayout() {
   const pathName = usePathname();
   const { isSignedIn } = useAuth();
 
-  // Shmuel change
-  // if (isSignedIn && user?.unsafeMetadata?.onboarding_completed !== true) {
-  //   if (pathName !== "/auth/complete-your-account") {
-  //     return <Redirect href="/auth/complete-your-account" />;
-  //   }
-  // }
-
   if (isSignedIn) {
-    return <Redirect href="/(tabs)" />;
-  }
-
-  if (isSignedIn && user?.unsafeMetadata?.onboarding_completed === true) {
     return <Redirect href="/(tabs)" />;
   }
 
   return (
     <Stack>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen
-        name="complete-your-account"
-        options={{ headerShown: false }}
+        name="index"
+        options={{
+          headerShown: false, // This hides the header for the login screen
+        }}
+      />
+      <Stack.Screen
+        name="signup"
+        options={{
+          headerShown: false, // This hides the header for the signup screen
+        }}
+      />
+      <Stack.Screen
+        name="reset-password"
+        options={{
+          headerShown: false,
+        }}
       />
     </Stack>
   );
