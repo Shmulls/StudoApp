@@ -1,5 +1,6 @@
 import { useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   FlatList,
@@ -55,7 +56,7 @@ const HomeScreen = () => {
       <View style={styles.header}>
         <Image source={{ uri: user?.imageUrl }} style={styles.profileImage} />
         <View style={styles.headerIcons}>
-          <TouchableOpacity onPress={() => console.log("Settings clicked")}>
+          <TouchableOpacity onPress={() => router.push("/settings")}>
             <Ionicons
               name="settings-outline"
               size={24}
