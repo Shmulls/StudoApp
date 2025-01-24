@@ -44,7 +44,11 @@ const NotificationsScreen = () => {
         keyExtractor={(item: Notification) => item._id}
         renderItem={({ item }: { item: Notification }) => (
           <View style={styles.notificationCard}>
-            <Ionicons name="notifications-outline" size={28} color="#007AFF" />
+            <Ionicons
+              name="return-down-forward-outline"
+              size={45}
+              color="#000"
+            />
             <View style={styles.notificationContent}>
               <Text style={styles.notificationTitle}>{item.title}</Text>
               <Text style={styles.notificationMessage}>{item.message}</Text>
@@ -89,13 +93,13 @@ const styles = StyleSheet.create({
   notificationCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 10,
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
+    borderRadius: 30,
     padding: 15,
     marginBottom: 15,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    // shadowColor: "#000",
+    // shadowOpacity: 0.1,
+    // shadowRadius: 10,
     elevation: 3,
   },
   notificationContent: {

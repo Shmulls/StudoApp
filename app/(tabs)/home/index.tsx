@@ -115,7 +115,7 @@ const HomeScreen = () => {
               onPress={() => handleSignUp(item._id)}
             >
               <Text style={styles.taskButtonText}>
-                {item.signedUp ? "✔ Signed Up" : "Sign Up"}
+                {item.signedUp ? "Signed up" : "Sign Up"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -140,12 +140,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   profileImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 70,
+    height: 70,
+    borderRadius: 40,
     borderColor: "#fff",
     borderWidth: 2,
-    marginTop: 60,
+    marginTop: 45,
   },
   headerIcons: {
     flexDirection: "row",
@@ -227,7 +227,9 @@ const styles = StyleSheet.create({
     bottom: 8,
   },
   taskButtonCompleted: {
-    // backgroundColor: "#4CAF50",
+    backgroundColor: "#4CAF50",
+    borderRadius: 9,
+    padding: 4,
   },
   taskButtonText: {
     color: "#fff",
