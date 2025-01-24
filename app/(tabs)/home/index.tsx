@@ -56,6 +56,16 @@ const HomeScreen = () => {
       <View style={styles.header}>
         <Image source={{ uri: user?.imageUrl }} style={styles.profileImage} />
         <View style={styles.headerIcons}>
+          {/* Notification Icon */}
+          <TouchableOpacity onPress={() => router.push("/notification")}>
+            <Ionicons
+              name="notifications-outline"
+              size={24}
+              color="#333"
+              style={styles.icon}
+            />
+          </TouchableOpacity>
+          {/* Settings Icon */}
           <TouchableOpacity onPress={() => router.push("/settings")}>
             <Ionicons
               name="settings-outline"
