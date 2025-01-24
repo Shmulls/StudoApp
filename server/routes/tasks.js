@@ -2,7 +2,9 @@ const express = require("express");
 const Task = require("../models/Task");
 const CompletedTask = require("../models/CompletedTask");
 const router = express.Router();
-const mongoose = require("mongoose"); // This was missing
+const mongoose = require("mongoose");
+const io = require("../server");
+const Notification = require("../models/Notification");
 
 // Get all tasks
 router.get("/", async (req, res) => {
@@ -18,11 +20,49 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
   const task = new Task(req.body);
   try {
+    // Save the task to the database
     const newTask = await task.save();
+
+    // Debug log for task creation
+    console.log("Task created successfully:", newTask);
+
+    // Create a new notification
+    const notification = new Notification({
+      userId: "broadcast", // Use "broadcast" for system-wide notifications
+      title: "New Task Added",
+      message: `A new task titled "${newTask.title}" has been added.`,
+      createdAt: new Date(),
+    });
+
+    // Save the notification to the database
+    const savedNotification = await notification.save();
+
+    // Debug log for notification creation
+    console.log("Notification created successfully:", savedNotification);
+
+    // Emit the notification using Socket.io
+    const io = req.app.get("io"); // Retrieve io instance from app
+    if (!io) {
+      console.error("Socket.io instance not found!");
+      return res.status(500).json({ message: "Socket.io not initialized" });
+    }
+
+    io.emit("new-notification", {
+      _id: savedNotification._id,
+      title: savedNotification.title,
+      message: savedNotification.message,
+      createdAt: savedNotification.createdAt,
+    });
+
+    console.log("Emitted: New notification ->", {
+      title: savedNotification.title,
+      message: savedNotification.message,
+    });
+
     res.status(201).json(newTask);
-  } catch (err) {
-    console.error("Error creating task:", err);
-    res.status(400).json({ message: err.message });
+  } catch (error) {
+    console.error("Error creating task:", error);
+    res.status(400).json({ message: "Error creating task" });
   }
 });
 

@@ -9,8 +9,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import io from "socket.io-client";
 import { fetchNotifications } from "../../../api";
 import { Notification } from "../../../types/notifications";
+
+const socket = io("http://localhost:5001");
 
 const NotificationsScreen = () => {
   const { user } = useUser();
@@ -27,6 +30,16 @@ const NotificationsScreen = () => {
     };
 
     getNotifications();
+
+    // Listen for real-time notifications
+    socket.on("new-notification", (notification: Notification) => {
+      setNotifications((prev) => [notification, ...prev]); // NOTE - This is a common pattern to update the state with the new notification
+    });
+
+    // Clean up socket connection
+    return () => {
+      socket.off("new-notification");
+    };
   }, [user]);
 
   return (

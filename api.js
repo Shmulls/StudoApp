@@ -9,8 +9,9 @@ export const updateTask = (id, updatedTask) =>
 export const deleteTask = (id) => API.delete(`/tasks/${id}`);
 
 // Fetch notifications for a user
-export const fetchNotifications = (userId) =>
-  API.get(`/notifications/${userId}`);
+export const fetchNotifications = (userId) => {
+  return API.get(`/notifications/${userId}`);
+};
 
 // Create a notification (if needed for testing)
 export const createNotification = (notification) =>

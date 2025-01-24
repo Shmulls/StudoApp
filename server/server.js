@@ -1,6 +1,8 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const http = require("http"); // Import HTTP module
+const { Server } = require("socket.io"); // Import Socket.io
 require("dotenv").config();
 
 const app = express();
@@ -18,31 +20,33 @@ mongoose
   .then(() => console.log("Connected to MongoDB Atlas"))
   .catch((err) => console.error("Error connecting to MongoDB:", err));
 
+const notificationRoutes = require("./routes/notifications");
+app.use("/api/notifications", notificationRoutes);
+
+// Create an HTTP server and integrate it with socket.io
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Allow all origins (update this for production)
+  },
+});
+
+// Attach io instance to the app for use in routes
+app.set("io", io);
+
+// Handle WebSocket connections
+io.on("connection", (socket) => {
+  console.log("A user connected:", socket.id);
+
+  socket.on("disconnect", () => {
+    console.log("A user disconnected:", socket.id);
+  });
+});
+
 // Routes
 const taskRoutes = require("./routes/tasks");
-const notificationRoutes = require("./routes/notifications");
 app.use("/api/tasks", taskRoutes);
-app.use("/api/notifications", notificationRoutes); // Add the notifications route
 
-// Start server
+// Start the server
 const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
-const cron = require("node-cron");
-const Notification = require("./models/Notification");
-
-// Schedule a task to clean up notifications older than 30 days
-cron.schedule("0 0 * * *", async () => {
-  console.log("Running scheduled cleanup for old notifications...");
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - 30); // 30 days ago
-
-  try {
-    const result = await Notification.deleteMany({
-      createdAt: { $lt: cutoffDate },
-    });
-    console.log(`Deleted ${result.deletedCount} old notifications.`);
-  } catch (error) {
-    console.error("Error cleaning up old notifications:", error);
-  }
-});
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
