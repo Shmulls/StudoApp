@@ -9,7 +9,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                    git branch: 'Shmuels', url: 'https://github.com/Shmulls/StudoApp.git'
+                git branch: 'Shmuels', url: 'https://github.com/Shmulls/StudoApp.git'
             }
         }
 
@@ -18,6 +18,7 @@ pipeline {
                 sh 'node -v'
                 sh 'npm -v'
                 sh 'npm install -g expo-cli'
+            } 
         }
 
         stage('Install Dependencies') {
