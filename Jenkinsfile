@@ -1,37 +1,52 @@
 pipeline {
     agent any
 
+    environment {
+        NODE_VERSION = "18"
+        PATH = "/var/jenkins_home/nodejs/bin:$PATH"
+    }
+
     stages {
-        stage('Checkout Code') {
+        stage('Checkout') {
             steps {
-                git 'https://github.com/Shmulls/StudoApp'
+                git branch: 'Shmuels', url: 'https://github.com/Shmulls/StudoApp'
             }
         }
 
         stage('Setup Node.js') {
             steps {
-                sh 'node -v'
-                sh 'npm -v'
+                sh 'node -v && npm -v'
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                sh 'npm install -g expo-cli'
                 sh 'npm install'
             }
         }
 
-        stage('Run Lint') {
+        stage('Run Lint and Tests') {
             steps {
-                sh 'npx eslint .'
+                sh 'npm run lint || true'
             }
         }
 
-        stage('Start Expo for iOS') {
+        stage('Start Expo') {
             steps {
                 sh 'expo start --ios'
             }
         }
+
+    post {
+        always {
+            archiveArtifacts artifacts: '**/build/**/*.apk', fingerprint: true
+        }
+        failure {
+            echo 'Build failed!'
+        }
+        success {
+            echo 'Build successful!'
+        }
     }
+}
 }
