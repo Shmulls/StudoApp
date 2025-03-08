@@ -6,8 +6,8 @@ export default function AuthLayout() {
   const pathName = usePathname();
   const { isSignedIn } = useAuth();
 
-  if (isSignedIn) {
-    return <Redirect href="/auth" />;
+  if (isSignedIn && pathName === "/auth") {
+    return <Redirect href="/(tabs)/home" />;
   }
 
   return (
