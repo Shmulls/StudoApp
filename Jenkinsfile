@@ -36,7 +36,7 @@ pipeline {
 
     post {
         always {
-            archiveArtifacts artifacts: '**/build/**/*.apk', fingerprint: true
+            archiveArtifacts artifacts: '**/build/**', fingerprint: true
         }
         failure {
             echo 'Build failed!'
