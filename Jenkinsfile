@@ -3,6 +3,7 @@ pipeline {
 
     environment {
         NODE_VERSION = "18"
+        PATH = "/var/jenkins_home/nodejs/bin:$PATH"
     }
 
     stages {
@@ -14,9 +15,9 @@ pipeline {
 
         stage('Setup Node.js') {
             steps {
-                sh 'curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash -'
-                sh 'apt-get install -y nodejs'
-            }
+                sh 'node -v'
+                sh 'npm -v'
+                sh 'npm install -g expo-cli'
         }
 
         stage('Install Dependencies') {
