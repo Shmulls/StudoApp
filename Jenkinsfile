@@ -17,7 +17,7 @@ pipeline {
             steps {
                 sh 'node -v && npm -v'
                 sh 'npm uninstall -g expo-cli'  // Remove old CLI
-                sh 'npm install -g expo eas-cli'  // Install new CL
+                sh 'npm install -g expo eas-cli'  // Install new CLI
             }
         }
 
@@ -41,10 +41,9 @@ pipeline {
                     sh 'EAS_BUILD_SECRET=$EXPO_TOKEN npx eas build -p ios --non-interactive'
                 }
             }
-        }
-    }
+        }  // ✅ Closing brace added here to fix syntax
 
-
+    }  // ✅ Closing brace for `stages`
 
     post {
         always {
@@ -57,4 +56,4 @@ pipeline {
             echo 'Build successful!'
         }
     }
-}
+}  // ✅ Closing brace for `pipeline`
