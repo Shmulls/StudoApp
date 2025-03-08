@@ -3,39 +3,40 @@ pipeline {
 
     environment {
         NODE_VERSION = "18"
+        PATH = "/var/jenkins_home/nodejs/bin:$PATH"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                url: 'https://github.com/Shmulls/StudoApp.git'
+                git branch: 'Shmuels', url: 'https://github.com/Shmulls/StudoApp.git'
             }
         }
 
         stage('Setup Node.js') {
             steps {
-                sh 'export PATH="/var/jenkins_home/nodejs/bin:$PATH" && node -v && npm -v'
+                sh 'node -v && npm -v'
                 sh 'npm install -g expo-cli --unsafe-perm'
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                sh 'export PATH="/var/jenkins_home/nodejs/bin:$PATH" && npm install'
+                sh 'npm install'
             }
         }
 
         stage('Run Lint and Tests') {
             steps {
-                sh 'export PATH="/var/jenkins_home/nodejs/bin:$PATH" && npm run lint'
-                sh 'export PATH="/var/jenkins_home/nodejs/bin:$PATH" && npm test'
+                sh 'npm run lint'
+                sh 'npm test'
             }
         }
 
         stage('Build Expo App') {
             steps {
-                sh 'export PATH="/var/jenkins_home/nodejs/bin:$PATH" && npx expo prebuild'
-                sh 'export PATH="/var/jenkins_home/nodejs/bin:$PATH" && npx expo run:android'
+                sh 'npx expo prebuild'
+                sh 'npx expo run:android'
             }
         }
     }
