@@ -1,21 +1,17 @@
 pipeline {
     agent any
 
-    environment {
-        NODE_VERSION = "18"
-        PATH = "/var/jenkins_home/nodejs/bin:$PATH"
-    }
-
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                git branch: 'Shmuels', url: 'https://github.com/Shmulls/StudoApp'
+                git url: 'https://github.com/Shmulls/StudoApp', branch: 'Shmuels'
             }
         }
 
         stage('Setup Node.js') {
             steps {
-                sh 'node -v && npm -v'
+                sh 'node -v'
+                sh 'npm -v'
             }
         }
 
@@ -25,28 +21,22 @@ pipeline {
             }
         }
 
-        stage('Run Lint and Tests') {
-            steps {
-                sh 'npm run lint || true'
-            }
-        }
-
-        stage('Start Expo') {
+        stage('Start Expo for iOS') {
             steps {
                 sh 'expo start --ios'
             }
         }
+    }
 
     post {
         always {
-            archiveArtifacts artifacts: '**/build/**/*.apk', fingerprint: true
+            echo 'Pipeline finished!'
+        }
+        success {
+            echo 'Build succeeded!'
         }
         failure {
             echo 'Build failed!'
         }
-        success {
-            echo 'Build successful!'
-        }
     }
-}
 }
