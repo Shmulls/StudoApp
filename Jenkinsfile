@@ -8,7 +8,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git 'https://github.com/Shmulls/StudoApp'
+                    git branch: 'Shmuels', url: 'https://github.com/Shmulls/StudoApp.git'
             }
         }
 
