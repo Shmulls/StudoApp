@@ -8,6 +8,12 @@ pipeline {
     }
 
     stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'Shmuels', url: 'https://github.com/Shmulls/StudoApp.git'
+            }
+        }
+
         stage('Setup Node.js') {
             steps {
                 sh 'node -v'
