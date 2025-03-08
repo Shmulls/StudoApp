@@ -32,6 +32,7 @@ pipeline {
                 sh 'npm run lint || true'
             }
         }
+    }
 
     post {
         always {
