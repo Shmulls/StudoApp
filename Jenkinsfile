@@ -41,6 +41,7 @@ pipeline {
                     sh 'EAS_BUILD_SECRET=$EXPO_TOKEN npx eas build -p ios --non-interactive'
                 }
             }
+        }
     }
 
 
