@@ -35,7 +35,7 @@ pipeline {
         stage('Build Expo App') {
             steps {
                 sh 'npx expo prebuild'
-                sh 'npx expo run:android'
+                sh 'npx expo run:ios'
             }
         }
     }
