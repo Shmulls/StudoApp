@@ -38,7 +38,7 @@ pipeline {
                 withCredentials([string(credentialsId: 'EXPO_TOKEN', variable: 'EXPO_TOKEN')]) {
                     sh 'eas whoami --token $EXPO_TOKEN'  // Verify authentication
                     sh 'npx expo prebuild'  // Create native folders
-                    sh 'eas init --id 9db2a4df-4c30-4493-a35f-b0e27e8fc518 --non-interactive'  // Initialize EAS (Replace YOUR_PROJECT_ID)
+                    sh 'eas init --id 9db2a4df-4c30-4493-a35f-b0e27e8fc518 --force --non-interactive'  // Initialize EAS (Replace YOUR_PROJECT_ID)
                     sh 'EAS_BUILD_SECRET=$EXPO_TOKEN npx eas build -p ios --non-interactive'
                 }
             }
