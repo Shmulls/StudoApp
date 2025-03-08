@@ -3,22 +3,19 @@ pipeline {
 
     environment {
         NODE_VERSION = "18"
-        PATH = "/var/jenkins_home/nodejs/bin:$PATH"
+        PATH = "/var/jenkins_home/nodejs/bin:/var/jenkins_home/.npm-global/bin:$PATH"
+        NPM_CONFIG_PREFIX = "/var/jenkins_home/.npm-global"
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'Shmuels', url: 'https://github.com/Shmulls/StudoApp.git'
-            }
-        }
-
         stage('Setup Node.js') {
             steps {
                 sh 'node -v'
                 sh 'npm -v'
+                sh 'mkdir -p /var/jenkins_home/.npm-global'
+                sh 'npm config set prefix "/var/jenkins_home/.npm-global"'
                 sh 'npm install -g expo-cli'
-            } 
+            }
         }
 
         stage('Install Dependencies') {
