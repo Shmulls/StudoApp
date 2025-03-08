@@ -34,8 +34,9 @@ pipeline {
 
         stage('Build Expo App') {
             steps {
+                sh 'npx expo login -u shmuells -p Shmuel688'
                 sh 'npx expo prebuild'
-                sh 'npx expo run:ios'
+                sh 'npx eas build -p ios --non-interactive'
             }
         }
     }
