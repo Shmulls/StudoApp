@@ -16,7 +16,8 @@ pipeline {
         stage('Setup Node.js') {
             steps {
                 sh 'node -v && npm -v'
-                sh 'npm install -g expo-cli --unsafe-perm'
+                sh 'npm uninstall -g expo-cli'  // Remove old CLI
+                sh 'npm install -g expo eas-cli'  // Install new CL
             }
         }
 
@@ -34,12 +35,15 @@ pipeline {
 
         stage('Build Expo App') {
             steps {
-                sh 'npx expo login -u shmuells -p Shmuel688'
-                sh 'npx expo prebuild'
-                sh 'npx eas build -p ios --non-interactive'
+                withCredentials([string(credentialsId: 'EXPO_TOKEN', variable: 'EXPO_TOKEN')]) {
+                    sh 'eas whoami --token $EXPO_TOKEN'
+                    sh 'npx expo prebuild'
+                    sh 'EAS_BUILD_SECRET=$EXPO_TOKEN npx eas build -p ios --non-interactive'
+                }
             }
-        }
     }
+
+
 
     post {
         always {
