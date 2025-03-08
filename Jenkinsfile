@@ -1,14 +1,21 @@
 pipeline {
-    agent {
-        docker {
-            image 'node:16' // Use Node.js inside Docker
-        }
+    agent any
+
+    environment {
+        NODE_VERSION = "18"
     }
 
     stages {
-        stage('Checkout Code') {
+        stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/Shmulls/StudoApp'
+                git 'https://github.com/Shmulls/StudoApp'
+            }
+        }
+
+        stage('Setup Node.js') {
+            steps {
+                sh 'curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash -'
+                sh 'apt-get install -y nodejs'
             }
         }
 
@@ -18,25 +25,30 @@ pipeline {
             }
         }
 
-        stage('Run Tests') {
+        stage('Run Lint and Tests') {
             steps {
+                sh 'npm run lint'
                 sh 'npm test'
             }
         }
 
-        stage('Build App') {
+        stage('Build Expo App') {
             steps {
-                sh 'npm run build'
+                sh 'npx expo prebuild'
+                sh 'npx expo run:android'
             }
         }
     }
 
     post {
-        success {
-            echo '✅ CI Pipeline Passed!'
+        always {
+            archiveArtifacts artifacts: '**/build/**/*.apk', fingerprint: true
         }
         failure {
-            echo '❌ CI Failed! Check logs.'
+            echo 'Build failed!'
+        }
+        success {
+            echo 'Build successful!'
         }
     }
 }
