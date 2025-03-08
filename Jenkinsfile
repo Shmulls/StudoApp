@@ -3,8 +3,7 @@ pipeline {
 
     environment {
         NODE_VERSION = "18"
-        PATH = "/var/jenkins_home/nodejs/bin:/var/jenkins_home/.npm-global/bin:$PATH"
-        NPM_CONFIG_PREFIX = "/var/jenkins_home/.npm-global"
+        PATH = "/var/jenkins_home/nodejs/bin:$PATH"
     }
 
     stages {
@@ -18,10 +17,8 @@ pipeline {
             steps {
                 sh 'node -v'
                 sh 'npm -v'
-                sh 'mkdir -p /var/jenkins_home/.npm-global'
-                sh 'npm config set prefix "/var/jenkins_home/.npm-global"'
                 sh 'npm install -g expo-cli'
-            }
+            } 
         }
 
         stage('Install Dependencies') {
