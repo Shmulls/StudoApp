@@ -15,6 +15,8 @@ export default function TabLayout() {
       }}
     >
       <Stack.Screen name="home/index" /> {/* Home Screen */}
+      <Stack.Screen name="organization-feed/index" />{" "}
+      {/* Organization Feed Screen */}
       <Stack.Screen name="settings/index" /> {/* Settings Screen */}
       <Stack.Screen name="notification/index" /> {/* Notification Screen */}
     </Stack>

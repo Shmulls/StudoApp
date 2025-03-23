@@ -25,6 +25,12 @@ export default function AuthLayout() {
         }}
       />
       <Stack.Screen
+        name="signup-organization"
+        options={{
+          headerShown: false, // This hides the header for the organization signup screen
+        }}
+      />
+      <Stack.Screen
         name="reset-password"
         options={{
           headerShown: false,

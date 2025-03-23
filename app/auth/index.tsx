@@ -127,6 +127,16 @@ const AuthScreen = () => {
           <Text style={styles.signUpLink}>Create an account</Text>
         </Text>
       </TouchableOpacity>
+
+      {/* Sign-Up as Organization Link */}
+      <TouchableOpacity
+        onPress={() => router.push("/auth/signup-organization")}
+      >
+        <Text style={styles.signUpText}>
+          Our partner?{" "}
+          <Text style={styles.signUpLink}>Create an organization account</Text>
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 };
