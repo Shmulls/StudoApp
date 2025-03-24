@@ -1,7 +1,8 @@
 import { useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import LottieView from "lottie-react-native";
+import React, { useEffect, useRef, useState } from "react";
 import {
   FlatList,
   Image,
@@ -16,6 +17,8 @@ import { Task } from "../../../types/task";
 const Organization = () => {
   const { user } = useUser();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const closedTasksRef = useRef<LottieView>(null);
+  const openTasksRef = useRef<LottieView>(null);
 
   // Check if the user has the correct role
   useEffect(() => {
@@ -36,6 +39,22 @@ const Organization = () => {
     };
 
     getTasks();
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Play the closed tasks animation
+      if (closedTasksRef.current) {
+        closedTasksRef.current.play();
+      }
+
+      // Play the open tasks animation
+      if (openTasksRef.current) {
+        openTasksRef.current.play();
+      }
+    }, 1000); // Trigger every 5 seconds
+
+    return () => clearInterval(interval); // Cleanup interval on component unmount
   }, []);
 
   const handleSignUp = async (taskId: string) => {
@@ -73,7 +92,9 @@ const Organization = () => {
             />
           </TouchableOpacity>
           {/* Settings Icon */}
-          <TouchableOpacity onPress={() => router.push("/settings")}>
+          <TouchableOpacity
+            onPress={() => router.push("/organization-settings")}
+          >
             <Ionicons
               name="settings-outline"
               size={24}
@@ -83,9 +104,36 @@ const Organization = () => {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Statistics Bar */}
+      <View style={styles.statisticsBar}>
+        <View style={styles.statisticsItem}>
+          <LottieView
+            ref={closedTasksRef}
+            source={require("../../../assets/images/closed-tasks.json")} // Path to your Lottie JSON file
+            autoPlay
+            loop={false}
+            style={styles.lottieIcon}
+          />
+          <Text style={styles.statisticsLabel}>Closed Tasks</Text>
+          <Text style={styles.statisticsValue}>2</Text>
+        </View>
+        <View style={styles.statisticsItem}>
+          <LottieView
+            ref={openTasksRef}
+            source={require("../../../assets/images/opened-tasks.json")} // Path to your Lottie JSON file
+            autoPlay
+            loop={false}
+            style={styles.lottieIcon}
+          />
+          <Text style={styles.statisticsLabel}>Open Tasks</Text>
+          <Text style={styles.statisticsValue}>{tasks.length}</Text>
+        </View>
+      </View>
+
       {/* Task Section */}
       <Text style={styles.tasksTitle}>
-        Volunteers related to my organization ({tasks.length})
+        Volunteers related to my organization
       </Text>
       <FlatList
         data={tasks}
@@ -133,8 +181,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   profileImage: {
-    width: 70,
-    height: 70,
+    width: 55,
+    height: 55,
     borderRadius: 40,
     borderColor: "#fff",
     borderWidth: 2,
@@ -227,5 +275,40 @@ const styles = StyleSheet.create({
   taskButtonText: {
     color: "#fff",
     fontWeight: "bold",
+  },
+  statisticsBar: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    borderRadius: 15,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  statisticsItem: {
+    alignItems: "center",
+    flex: 1,
+  },
+  statisticsLabel: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 5,
+  },
+  statisticsValue: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#333",
+    marginTop: 5,
+  },
+  statisticsIcon: {
+    width: 80,
+    height: 80,
+  },
+  lottieIcon: {
+    width: 50,
+    height: 50,
   },
 });
