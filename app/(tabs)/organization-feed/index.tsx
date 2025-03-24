@@ -17,12 +17,12 @@ const Organization = () => {
   const { user } = useUser();
   const [tasks, setTasks] = useState<Task[]>([]);
 
-  // // Check if the user has the correct role
-  // useEffect(() => {
-  //   if (user?.role !== "organization") {
-  //     router.push("/auth/not-authorized"); // Redirect unauthorized users
-  //   }
-  // }, [user]);
+  // Check if the user has the correct role
+  useEffect(() => {
+    if (user?.unsafeMetadata?.role !== "organization") {
+      router.push("/auth/not-authorized"); // Redirect unauthorized users
+    }
+  }, [user]);
 
   // Fetch tasks from the backend
   useEffect(() => {
@@ -58,6 +58,7 @@ const Organization = () => {
 
   return (
     <View style={styles.container}>
+      <Text>✅ You are in the Organization Feed</Text>
       {/* Header Section */}
       <View style={styles.header}>
         <Image source={{ uri: user?.imageUrl }} style={styles.profileImage} />

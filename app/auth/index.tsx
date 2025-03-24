@@ -1,5 +1,5 @@
 import SocialLoginButton from "@/components/SocialLoginButton";
-import { useSignIn } from "@clerk/clerk-expo";
+import { useSignIn, useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useState } from "react";
@@ -18,6 +18,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 const AuthScreen = () => {
   const { signIn, setActive } = useSignIn();
+  const { user } = useUser();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -44,6 +45,13 @@ const AuthScreen = () => {
       if (createdSessionId) {
         if (setActive) {
           await setActive({ session: createdSessionId });
+
+          // Redirect based on role
+          if (user?.unsafeMetadata?.role === "organization") {
+            router.push("/(tabs)/organization-feed"); // Redirect organization users
+          } else {
+            router.push("/(tabs)/home"); // Redirect other users
+          }
         } else {
           setError("Failed to set active session.");
         }
@@ -98,7 +106,7 @@ const AuthScreen = () => {
 
       {/* Login Button */}
       <TouchableOpacity style={styles.loginButton} onPress={handleEmailLogin}>
-        <Text style={styles.loginButtonText}>Login in</Text>
+        <Text style={styles.loginButtonText}>Login</Text>
       </TouchableOpacity>
 
       {/* Animated Forgot Password Link */}

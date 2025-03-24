@@ -33,24 +33,34 @@ const SignUpOrganization = () => {
     }
 
     setLoading(true);
-    try {
-      if (!isLoaded) throw new Error("Sign-up service is unavailable.");
+    let retries = 3;
 
-      // Create user with organization role
-      await signUp.create({
-        emailAddress: email,
-        password,
-        firstName: organizationName, // Use firstName to store organization name
-        unsafeMetadata: { role: "organization" }, // Add role metadata
-      });
+    while (retries > 0) {
+      try {
+        if (!isLoaded) throw new Error("Sign-up service is unavailable.");
 
-      // Initiate email verification
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-      setPendingVerification(true);
-    } catch (err: any) {
-      setError(err.errors ? err.errors[0].message : "Sign-up failed.");
-    } finally {
-      setLoading(false);
+        // Create user with organization role
+        await signUp.create({
+          emailAddress: email,
+          password,
+          firstName: organizationName, // Use firstName to store organization name
+          unsafeMetadata: { role: "organization" },
+        });
+
+        // Initiate email verification
+        await signUp.prepareEmailAddressVerification({
+          strategy: "email_code",
+        });
+        setPendingVerification(true);
+        break; // Exit the loop if successful
+      } catch (err: any) {
+        retries -= 1;
+        if (retries === 0) {
+          setError(err.errors ? err.errors[0].message : "Sign-up failed.");
+        }
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
