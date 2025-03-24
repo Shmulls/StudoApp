@@ -86,7 +86,7 @@ const Organization = () => {
           <TouchableOpacity onPress={() => router.push("/notification")}>
             <Ionicons
               name="notifications-outline"
-              size={24}
+              size={30}
               color="#333"
               style={styles.icon}
             />
@@ -97,7 +97,7 @@ const Organization = () => {
           >
             <Ionicons
               name="settings-outline"
-              size={24}
+              size={30}
               color="#333"
               style={styles.icon}
             />
@@ -181,17 +181,17 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   profileImage: {
-    width: 55,
-    height: 55,
+    width: 45,
+    height: 45,
     borderRadius: 40,
     borderColor: "#fff",
     borderWidth: 2,
-    marginTop: 45,
+    marginTop: 25,
   },
   headerIcons: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 60,
+    marginTop: 40,
   },
   icon: {
     marginLeft: 20,
