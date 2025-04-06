@@ -1,51 +1,159 @@
-# Welcome to Studo Development 👋
+# Studo Development App 📱
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A modern cross-platform mobile application built with Expo and React Native, designed for task management and social collaboration. Our platform enables users to connect, collaborate, and complete tasks efficiently through an intuitive interface.
 
-## Get started
+## Features ✨
 
-1. Install dependencies
+- Social authentication with multiple providers
+- Cross-platform compatibility (iOS, Android, Web)
+- Real-time task management
+- Location-based features
+- User collaboration tools
+- File-based routing architecture
+- MongoDB integration
+- TypeScript support
+
+## Prerequisites 🛠️
+
+Before you begin, ensure you have the following installed:
+
+- Node.js (v16.0 or later)
+- npm or yarn
+- Xcode (for iOS development)
+- Android Studio (for Android development)
+- Expo Go app (for physical device testing)
+
+## Installation 🚀
+
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/yourusername/studo-app.git
+   cd studo-app
+   ```
+
+2. **Install dependencies**
 
    ```bash
    npm install
    ```
 
-2. Start the app
-
+3. **Set up environment variables**
+   Create a `.env` file in the root directory:
    ```bash
-    npx expo start
+   EXPO_PUBLIC_API_URL=your_api_url
+   CLERK_PUBLISHABLE_KEY=your_clerk_key
+   MONGODB_URI=your_mongodb_uri
    ```
 
-In the output, you'll find options to open the app in a
+## Running the App 📱
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+1. **Start the development server**
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+   ```bash
+   npx expo start
+   ```
 
-## Get a fresh project
+2. **Choose your platform**
+   - Press `i` to run on iOS simulator
+   - Press `a` to run on Android emulator
+   - Press `w` to run in web browser
+   - Scan QR code with Expo Go app on your device
 
-When you're ready, run:
+## Project Structure 📁
+
+```
+studo-app/
+├── app/                # Main application code
+│   ├── (tabs)/        # Tab-based navigation
+│   ├── auth/          # Authentication screens
+│   └── _layout.tsx    # Root layout configuration
+├── components/        # Reusable UI components
+├── server/           # Backend integration
+├── types/            # TypeScript definitions
+└── assets/          # Images, fonts, and other static files
+```
+
+## Development Guide 💻
+
+### Fresh Project Setup
+
+To start with a clean slate:
 
 ```bash
 npm run reset-project
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Key Commands
 
-## Learn more
+```bash
+npm start              # Start development server
+npm run ios           # Run on iOS simulator
+npm run android       # Run on Android emulator
+npm run web           # Run in web browser
+npm run test          # Run tests
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+## Tech Stack 🛠️
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- **Frontend**
 
-## Join the community
+  - Expo
+  - React Native
+  - TypeScript
+  - React Navigation
 
-Join our community of developers creating universal apps.
+- **Backend**
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+  - MongoDB
+  - Node.js
+  - Express
 
+- **Authentication**
+  - Clerk
+
+## Documentation 📚
+
+For detailed documentation, please refer to:
+
+- [Expo Documentation](https://docs.expo.dev/)
+- [React Native Documentation](https://reactnative.dev/)
+- [Clerk Documentation](https://clerk.dev/docs)
+- [MongoDB Documentation](https://docs.mongodb.com/)
+
+## Contributing 🤝
+
+1. Fork the repository
+2. Create your feature branch
+   ```bash
+   git checkout -b feature/YourFeature
+   ```
+3. Commit your changes
+   ```bash
+   git commit -m 'Add YourFeature'
+   ```
+4. Push to the branch
+   ```bash
+   git push origin feature/YourFeature
+   ```
+5. Open a Pull Request
+
+## Support 💬
+
+- Join our [Discord community](https://chat.expo.dev)
+- Report issues on [GitHub Issues](https://github.com/yourusername/studo-app/issues)
+- Check our [Documentation](https://docs.expo.dev/)
+
+## License 📄
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments 👏
+
+- Expo team for the amazing development platform
+- React Native community for continuous support
+- All contributors who help improve this project
+
+---
+
+Built with ❤️ by Studo Development Team

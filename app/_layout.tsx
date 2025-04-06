@@ -52,7 +52,6 @@ export default function RootLayout() {
                 headerShown: false,
               }}
             />{" "}
-            // Protected routes
             <Stack.Screen
               name="auth"
               options={{
@@ -67,13 +66,3 @@ export default function RootLayout() {
     </ClerkProvider>
   );
 }
-
-// app/(tabs)/_layout.tsx (Protected Routes)
-const TabLayout = () => {
-  return (
-    <Stack>
-      <Stack.Screen name="index" /> // Home
-      <Stack.Screen name="settings" /> // Settings
-    </Stack>
-  );
-};

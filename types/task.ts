@@ -1,9 +1,18 @@
-// types/task.ts
 export interface Task {
-  id: number;
+  _id: string;
   title: string;
   description: string;
-  time: string;
   location: string;
+  time: string;
   signedUp: boolean;
 }
+
+// // Define the Task type
+// interface Task {
+//   _id: string;
+//   title: string;
+//   description: string;
+//   location: string;
+//   time: string;
+//   signedUp: boolean;
+// }

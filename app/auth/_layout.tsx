@@ -6,8 +6,8 @@ export default function AuthLayout() {
   const pathName = usePathname();
   const { isSignedIn } = useAuth();
 
-  if (isSignedIn) {
-    return <Redirect href="/(tabs)" />;
+  if (isSignedIn && pathName === "/auth") {
+    return <Redirect href="/(tabs)/home" />;
   }
 
   return (
@@ -22,6 +22,12 @@ export default function AuthLayout() {
         name="signup"
         options={{
           headerShown: false, // This hides the header for the signup screen
+        }}
+      />
+      <Stack.Screen
+        name="signup-organization"
+        options={{
+          headerShown: false, // This hides the header for the organization signup screen
         }}
       />
       <Stack.Screen

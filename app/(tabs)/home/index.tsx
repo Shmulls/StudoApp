@@ -1,8 +1,7 @@
 import { useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   FlatList,
   Image,
@@ -12,49 +11,63 @@ import {
   View,
 } from "react-native";
 import * as Progress from "react-native-progress";
+import { fetchTasks, updateTask } from "../../../api";
+import { Task } from "../../../types/task";
 
 const HomeScreen = () => {
   const { user } = useUser();
-  const navigation = useNavigation();
-  const [tasks, setTasks] = useState([
-    {
-      id: 1,
-      title: "Go shopping for Daphne Levy",
-      description:
-        "Go to her house and collect money and a shopping list, then go shopping at the nearest supermarket and buy for her the products she requested.",
-      time: "11:00 AM",
-      location: "Hagvora 11, Ashdod",
-      signedUp: false,
-    },
-    {
-      id: 2,
-      title: "Go shopping for Daphne Levy",
-      description:
-        "Go to her house and collect money and a shopping list, then go shopping at the nearest supermarket and buy for her the products she requested.",
-      time: "11:00 AM",
-      location: "Hagvora 11, Ashdod",
-      signedUp: false,
-    },
-  ]);
+  const [tasks, setTasks] = useState<Task[]>([]);
 
-  const handleSignUp = (taskId: number) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === taskId ? { ...task, signedUp: !task.signedUp } : task
-      )
-    );
+  // Fetch tasks from the backend
+  useEffect(() => {
+    const getTasks = async () => {
+      try {
+        const { data } = await fetchTasks(); // Fetch tasks from the backend
+        setTasks(data);
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+      }
+    };
+
+    getTasks();
+  }, []);
+
+  const handleSignUp = async (taskId: string) => {
+    const task = tasks.find((t) => t._id === taskId);
+    if (!task) {
+      console.error("Task not found");
+      return;
+    }
+
+    const updatedTask = { ...task, signedUp: !task.signedUp };
+    try {
+      await updateTask(taskId, updatedTask); // Update the task in the backend
+      setTasks((prevTasks) =>
+        prevTasks.map((task) => (task._id === taskId ? updatedTask : task))
+      );
+    } catch (error) {
+      console.error("Error updating task:", error);
+    }
   };
 
   return (
     <View style={styles.container}>
       {/* Header Section */}
       <View style={styles.header}>
-        <Image source={{ uri: user?.imageUrl }} style={styles.profileImage} />
+        <TouchableOpacity onPress={() => router.push("/profile")}>
+          <Image source={{ uri: user?.imageUrl }} style={styles.profileImage} />
+        </TouchableOpacity>
         <View style={styles.headerIcons}>
-          {/* Home icon disabled from home page - may re-used for refresh button */}
-          {/* <TouchableOpacity onPress={() => router.push("/")}>
-            <Ionicons name="home" size={24} color="#333" style={styles.icon} />
-          </TouchableOpacity> */}
+          {/* Notification Icon */}
+          <TouchableOpacity onPress={() => router.push("/notification")}>
+            <Ionicons
+              name="notifications-outline"
+              size={24}
+              color="#333"
+              style={styles.icon}
+            />
+          </TouchableOpacity>
+          {/* Settings Icon */}
           <TouchableOpacity onPress={() => router.push("/settings")}>
             <Ionicons
               name="settings-outline"
@@ -70,7 +83,7 @@ const HomeScreen = () => {
       <View style={styles.progressContainer}>
         <Text style={styles.progressTitle}>Achievement progress</Text>
         <Progress.Bar
-          progress={0.6}
+          progress={tasks.filter((t) => t.signedUp).length / tasks.length || 0}
           width={null}
           height={10}
           color="#333"
@@ -85,7 +98,7 @@ const HomeScreen = () => {
       </Text>
       <FlatList
         data={tasks}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item._id}
         renderItem={({ item }) => (
           <View style={styles.taskCard}>
             <View style={styles.taskInfo}>
@@ -101,20 +114,10 @@ const HomeScreen = () => {
                 styles.taskButton,
                 item.signedUp && styles.taskButtonCompleted,
               ]}
-              onPress={() => handleSignUp(item.id)}
+              onPress={() => handleSignUp(item._id)}
             >
               <Text style={styles.taskButtonText}>
-                {item.signedUp ? (
-                  <Image
-                    source={require("../../assets/images/checked.png")}
-                    style={styles.checkedICON}
-                  />
-                ) : (
-                  <Image
-                    source={require("../../assets/images/sign-up.png")}
-                    style={styles.signupICON}
-                  />
-                )}
+                {item.signedUp ? "Signed up" : "Sign Up"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -139,12 +142,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   profileImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 45,
+    height: 45,
+    borderRadius: 40,
     borderColor: "#fff",
     borderWidth: 2,
-    marginTop: 60,
+    marginTop: 45,
   },
   headerIcons: {
     flexDirection: "row",
@@ -226,7 +229,9 @@ const styles = StyleSheet.create({
     bottom: 8,
   },
   taskButtonCompleted: {
-    // backgroundColor: "#4CAF50",
+    backgroundColor: "#4CAF50",
+    borderRadius: 9,
+    padding: 4,
   },
   taskButtonText: {
     color: "#fff",

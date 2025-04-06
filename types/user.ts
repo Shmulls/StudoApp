@@ -1,4 +1,5 @@
-// types/user.ts
 export interface User {
-  // Define user types
+  id: string;
+  name: string;
+  email: string;
 }
