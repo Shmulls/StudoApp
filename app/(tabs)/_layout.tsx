@@ -24,6 +24,8 @@ export default function TabLayout() {
       <Stack.Screen name="organization-notification/index" />
       {/* Settings Screen */}
       <Stack.Screen name="settings/index" />
+      {/* Settings Screen */}
+      <Stack.Screen name="profile/index" />
       {/* Notification Screen */}
       <Stack.Screen name="notification/index" />
     </Stack>

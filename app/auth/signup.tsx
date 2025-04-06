@@ -18,10 +18,13 @@ const SignUpScreen = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [ID, setID] = useState("");
-  const [code, setCode] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [age, setAge] = useState("");
   const [institution, setInstitution] = useState("");
-  const [showPicker, setShowPicker] = useState(false); // For controlling the modal
+  const [degree, setDegree] = useState("");
+  const [yearOfStudy, setYearOfStudy] = useState("");
+  const [code, setCode] = useState("");
+  const [showPicker, setShowPicker] = useState(false);
   const [pendingVerification, setPendingVerification] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -37,8 +40,18 @@ const SignUpScreen = () => {
     try {
       if (!isLoaded) throw new Error("Sign-up service is unavailable.");
 
-      // Create user
-      await signUp.create({ emailAddress: email, password });
+      // Create user with public metadata
+      await signUp.create({
+        emailAddress: email,
+        password,
+        unsafeMetadata: {
+          phoneNumber,
+          age,
+          institution,
+          degree,
+          yearOfStudy,
+        },
+      });
 
       // Initiate email verification
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
@@ -71,7 +84,6 @@ const SignUpScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Input Fields */}
       {!pendingVerification && (
         <>
           <TextInput
@@ -82,7 +94,6 @@ const SignUpScreen = () => {
             autoCapitalize="none"
             keyboardType="email-address"
             placeholderTextColor="#888"
-            textContentType="none"
           />
           <TextInput
             style={styles.input}
@@ -91,7 +102,6 @@ const SignUpScreen = () => {
             onChangeText={setPassword}
             secureTextEntry
             placeholderTextColor="#888"
-            textContentType="none"
           />
           <TextInput
             style={styles.input}
@@ -103,13 +113,37 @@ const SignUpScreen = () => {
           />
           <TextInput
             style={styles.input}
-            placeholder="Enter ID number"
-            value={ID}
-            onChangeText={setID}
+            placeholder="Enter your phone number"
+            value={phoneNumber}
+            onChangeText={setPhoneNumber}
+            keyboardType="phone-pad"
+            placeholderTextColor="#888"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your age"
+            value={age}
+            onChangeText={setAge}
+            keyboardType="numeric"
+            placeholderTextColor="#888"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your degree"
+            value={degree}
+            onChangeText={setDegree}
+            placeholderTextColor="#888"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your year of study"
+            value={yearOfStudy}
+            onChangeText={setYearOfStudy}
+            keyboardType="numeric"
             placeholderTextColor="#888"
           />
 
-          {/* Picker with Modal from @React-Native library */}
+          {/* Picker for Institution */}
           <TouchableOpacity
             style={styles.pickerContainer}
             onPress={() => setShowPicker(true)}
@@ -127,9 +161,9 @@ const SignUpScreen = () => {
                   selectedValue={institution}
                   onValueChange={(itemValue) => {
                     setInstitution(itemValue);
-                    setShowPicker(false); // Close the modal on selection
+                    setShowPicker(false);
                   }}
-                  style={styles.modalPicker} // Add styles for better visibility
+                  style={styles.modalPicker}
                 >
                   <Picker.Item
                     label="Select educational institution"
@@ -162,7 +196,6 @@ const SignUpScreen = () => {
         </>
       )}
 
-      {/* Verification Step */}
       {pendingVerification && (
         <>
           <TextInput
@@ -239,7 +272,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)", // Dimmed background
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
   modalContent: {
     width: "80%",
@@ -249,25 +282,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalTitle: {
-    fontSize: 18, // Larger font size
-    fontWeight: "bold", // Bold text
-    marginBottom: 10, // Space between title and picker
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
   },
   modalPicker: {
-    width: "100%", // Full width
-    height: 150, // height of the picker
-    marginBottom: 20, // Space between picker and close button
+    width: "100%",
+    height: 150,
+    marginBottom: 20,
   },
   closeButton: {
-    width: "100%", // Full width
-    padding: 10, // Padding around the text
-    backgroundColor: "#333", // Background color
-    borderRadius: 10, // Rounded corners
-    alignItems: "center", // Center the text horizontally
+    width: "100%",
+    padding: 10,
+    backgroundColor: "#333",
+    borderRadius: 10,
+    alignItems: "center",
   },
   closeButtonText: {
-    color: "#fff", // White text color
-    fontSize: 16, // Larger font size
-    fontWeight: "bold", // Bold text
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });

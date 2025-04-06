@@ -54,7 +54,9 @@ const HomeScreen = () => {
     <View style={styles.container}>
       {/* Header Section */}
       <View style={styles.header}>
-        <Image source={{ uri: user?.imageUrl }} style={styles.profileImage} />
+        <TouchableOpacity onPress={() => router.push("/profile")}>
+          <Image source={{ uri: user?.imageUrl }} style={styles.profileImage} />
+        </TouchableOpacity>
         <View style={styles.headerIcons}>
           {/* Notification Icon */}
           <TouchableOpacity onPress={() => router.push("/notification")}>
@@ -140,8 +142,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   profileImage: {
-    width: 70,
-    height: 70,
+    width: 45,
+    height: 45,
     borderRadius: 40,
     borderColor: "#fff",
     borderWidth: 2,
