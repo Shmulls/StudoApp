@@ -1,9 +1,81 @@
 import { useUser } from "@clerk/clerk-expo";
-import React from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import React, { useState } from "react";
+import {
+  Image,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 const ProfileScreen = () => {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
+  const [editingField, setEditingField] = useState<string | null>(null);
+  type FieldValues = {
+    phoneNumber: string;
+    age: string;
+    institution: string;
+    degree: string;
+    yearOfStudy: string;
+  };
+
+  const [fieldValues, setFieldValues] = useState<FieldValues>({
+    phoneNumber: (user?.unsafeMetadata?.phoneNumber as string) || "",
+    age: (user?.unsafeMetadata?.age as string) || "",
+    institution: (user?.unsafeMetadata?.institution as string) || "",
+    degree: (user?.unsafeMetadata?.degree as string) || "",
+    yearOfStudy: (user?.unsafeMetadata?.yearOfStudy as string) || "",
+  });
+
+  const handleSave = async (field: keyof FieldValues) => {
+    try {
+      await user?.update({
+        unsafeMetadata: {
+          ...user?.unsafeMetadata,
+          [field]: fieldValues[field],
+        },
+      });
+      setEditingField(null);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+    }
+  };
+
+  const renderField = (label: string, field: keyof typeof fieldValues) => (
+    <View style={styles.fieldContainer}>
+      <Text style={styles.infoLabel}>{label}:</Text>
+      {editingField === field ? (
+        <TextInput
+          style={styles.input}
+          value={fieldValues[field]}
+          onChangeText={(text) =>
+            setFieldValues((prev) => ({ ...prev, [field]: text }))
+          }
+          keyboardType={
+            field === "age" || field === "yearOfStudy" ? "numeric" : "default"
+          }
+        />
+      ) : (
+        <Text style={styles.infoValue}>
+          {String(fieldValues[field] || "Not provided")}
+        </Text>
+      )}
+      <TouchableOpacity
+        onPress={() =>
+          editingField === field ? handleSave(field) : setEditingField(field)
+        }
+      >
+        <Ionicons
+          name={editingField === field ? "checkmark" : "pencil"}
+          size={20}
+          color="#333"
+          style={styles.icon}
+        />
+      </TouchableOpacity>
+    </View>
+  );
 
   if (!user) {
     return (
@@ -13,8 +85,7 @@ const ProfileScreen = () => {
     );
   }
 
-  const { firstName, lastName, emailAddresses, imageUrl, publicMetadata } =
-    user;
+  const { firstName, lastName, emailAddresses, imageUrl } = user;
   const primaryEmailAddress = emailAddresses[0]?.emailAddress;
 
   return (
@@ -28,43 +99,12 @@ const ProfileScreen = () => {
       </Text>
       <Text style={styles.email}>{primaryEmailAddress}</Text>
 
-      {/* Additional Information */}
-      <View style={styles.infoContainer}>
-        <Text style={styles.infoLabel}>Phone Number:</Text>
-        <Text style={styles.infoValue}>
-          {String(publicMetadata?.phoneNumber || "Not provided")}
-        </Text>
-
-        <Text style={styles.infoLabel}>Age:</Text>
-        <Text style={styles.infoValue}>
-          {String(publicMetadata?.age || "Not provided")}
-        </Text>
-
-        <Text style={styles.infoLabel}>Academic Institution:</Text>
-        <Text style={styles.infoValue}>
-          {String(publicMetadata?.institution || "Not provided")}
-        </Text>
-
-        <Text style={styles.infoLabel}>Degree:</Text>
-        <Text style={styles.infoValue}>
-          {String(publicMetadata?.degree || "Not provided")}
-        </Text>
-        <Text style={styles.infoLabel}>Year of Study:</Text>
-        <Text style={styles.infoValue}>
-          {String(publicMetadata?.yearOfStudy || "Not provided")}
-        </Text>
-      </View>
-
-      {/* Edit Profile Button */}
-      <TouchableOpacity
-        style={styles.editButton}
-        onPress={() => {
-          // Navigate to edit profile page (if implemented)
-          console.log("Edit Profile button clicked");
-        }}
-      >
-        <Text style={styles.editButtonText}>Edit Profile</Text>
-      </TouchableOpacity>
+      {/* Editable Fields */}
+      {renderField("Phone Number", "phoneNumber")}
+      {renderField("Age", "age")}
+      {renderField("Academic Institution", "institution")}
+      {renderField("Degree", "degree")}
+      {renderField("Year of Study", "yearOfStudy")}
     </View>
   );
 };
@@ -96,31 +136,35 @@ const styles = StyleSheet.create({
     color: "#666",
     marginBottom: 20,
   },
-  infoContainer: {
+  fieldContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     width: "100%",
-    marginTop: 20,
+    marginBottom: 15,
   },
   infoLabel: {
     fontSize: 16,
     fontWeight: "bold",
     color: "#333",
+    flex: 1,
   },
   infoValue: {
     fontSize: 16,
     color: "#666",
-    marginBottom: 10,
+    flex: 2,
   },
-  editButton: {
-    marginTop: 30,
-    backgroundColor: "#333",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 10,
+  input: {
+    flex: 2,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    height: 40,
+    backgroundColor: "#fff",
   },
-  editButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
+  icon: {
+    marginLeft: 10,
   },
   errorText: {
     color: "red",
