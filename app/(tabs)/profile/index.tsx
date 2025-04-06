@@ -9,27 +9,26 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { router } from "expo-router";
 
 const ProfileScreen = () => {
-  const { user, isLoaded } = useUser();
+  const { user } = useUser();
   const [editingField, setEditingField] = useState<string | null>(null);
-  type FieldValues = {
-    phoneNumber: string;
-    age: string;
-    institution: string;
-    degree: string;
-    yearOfStudy: string;
-  };
-
-  const [fieldValues, setFieldValues] = useState<FieldValues>({
-    phoneNumber: (user?.unsafeMetadata?.phoneNumber as string) || "",
-    age: (user?.unsafeMetadata?.age as string) || "",
-    institution: (user?.unsafeMetadata?.institution as string) || "",
-    degree: (user?.unsafeMetadata?.degree as string) || "",
-    yearOfStudy: (user?.unsafeMetadata?.yearOfStudy as string) || "",
+  const [fieldValues, setFieldValues] = useState({
+    phoneNumber: user?.unsafeMetadata?.phoneNumber || "",
+    age: user?.unsafeMetadata?.age || "",
+    institution: user?.unsafeMetadata?.institution || "",
+    degree: user?.unsafeMetadata?.degree || "",
+    yearOfStudy: user?.unsafeMetadata?.yearOfStudy || "",
   });
+  const [passwordFields, setPasswordFields] = useState({
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<boolean>(false);
 
-  const handleSave = async (field: keyof FieldValues) => {
+  const handleSave = async (field: string) => {
     try {
       await user?.update({
         unsafeMetadata: {
@@ -43,12 +42,30 @@ const ProfileScreen = () => {
     }
   };
 
+  const handlePasswordChange = async () => {
+    if (passwordFields.newPassword !== passwordFields.confirmPassword) {
+      setPasswordError("Passwords do not match.");
+      return;
+    }
+
+    try {
+      await user?.updatePassword({ password: passwordFields.newPassword });
+      setPasswordError(null);
+      setPasswordSuccess(true);
+      setPasswordFields({ newPassword: "", confirmPassword: "" });
+      setEditingField(null);
+    } catch (error) {
+      console.error("Error changing password:", error);
+      setPasswordError("Failed to change password. Please try again.");
+    }
+  };
+
   const renderField = (label: string, field: keyof typeof fieldValues) => (
-    <View style={styles.fieldContainer}>
-      <Text style={styles.infoLabel}>{label}:</Text>
+    <View style={styles.fieldRow}>
+      <Text style={styles.fieldLabel}>{label}</Text>
       {editingField === field ? (
         <TextInput
-          style={styles.input}
+          style={styles.fieldInput}
           value={fieldValues[field]}
           onChangeText={(text) =>
             setFieldValues((prev) => ({ ...prev, [field]: text }))
@@ -58,7 +75,7 @@ const ProfileScreen = () => {
           }
         />
       ) : (
-        <Text style={styles.infoValue}>
+        <Text style={styles.fieldValue}>
           {String(fieldValues[field] || "Not provided")}
         </Text>
       )}
@@ -70,10 +87,89 @@ const ProfileScreen = () => {
         <Ionicons
           name={editingField === field ? "checkmark" : "pencil"}
           size={20}
-          color="#333"
+          color="#4CAF50"
           style={styles.icon}
         />
       </TouchableOpacity>
+    </View>
+  );
+
+  const renderPasswordField = () => (
+    <View style={styles.passwordRow}>
+      <Text style={styles.fieldLabel}>Password Change</Text>
+      {editingField === "password" ? (
+        <View style={styles.passwordBox}>
+          {/* Enter New Password */}
+          <TextInput
+            style={styles.passwordInput}
+            placeholder="Enter new password"
+            secureTextEntry
+            value={passwordFields.newPassword}
+            onChangeText={(text) =>
+              setPasswordFields((prev) => ({ ...prev, newPassword: text }))
+            }
+          />
+
+          {/* Re-enter New Password */}
+          <TextInput
+            style={styles.passwordInput}
+            placeholder="Re-enter new password"
+            secureTextEntry
+            value={passwordFields.confirmPassword}
+            onChangeText={(text) =>
+              setPasswordFields((prev) => ({ ...prev, confirmPassword: text }))
+            }
+          />
+
+          {/* Error Message */}
+          {passwordError && (
+            <Text style={styles.errorText}>{passwordError}</Text>
+          )}
+
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
+            {/* Submit Icon */}
+            <TouchableOpacity onPress={handlePasswordChange}>
+              <Ionicons
+                name="checkmark"
+                size={24}
+                color="#4CAF50"
+                style={styles.icon}
+              />
+            </TouchableOpacity>
+
+            {/* Cancel Icon */}
+            <TouchableOpacity
+              onPress={() => {
+                setEditingField(null);
+                setPasswordFields({ newPassword: "", confirmPassword: "" });
+                setPasswordError(null);
+              }}
+            >
+              <Ionicons
+                name="close"
+                size={24}
+                color="#FF0000"
+                style={styles.icon}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        <TouchableOpacity onPress={() => setEditingField("password")}>
+          <Ionicons
+            name="pencil"
+            size={24}
+            color="#4CAF50"
+            style={styles.icon}
+          />
+        </TouchableOpacity>
+      )}
+
+      {/* Success Message */}
+      {passwordSuccess && (
+        <Text style={styles.successText}>Password changed successfully!</Text>
+      )}
     </View>
   );
 
@@ -90,21 +186,39 @@ const ProfileScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Profile Picture */}
-      <Image source={{ uri: imageUrl }} style={styles.profileImage} />
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.push("/(tabs)/home")}
+        >
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Edit Profile</Text>
+      </View>
 
-      {/* User Information */}
-      <Text style={styles.name}>
-        {firstName} {lastName}
-      </Text>
-      <Text style={styles.email}>{primaryEmailAddress}</Text>
+      {/* Profile Picture */}
+      <View style={styles.profileContainer}>
+        <View style={styles.profileImageWrapper}>
+          <Image source={{ uri: imageUrl }} style={styles.profileImage} />
+          <TouchableOpacity style={styles.editIcon}>
+            <Ionicons name="camera" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.name}>
+          {firstName} {lastName}
+        </Text>
+      </View>
 
       {/* Editable Fields */}
-      {renderField("Phone Number", "phoneNumber")}
-      {renderField("Age", "age")}
-      {renderField("Academic Institution", "institution")}
-      {renderField("Degree", "degree")}
-      {renderField("Year of Study", "yearOfStudy")}
+      <View style={styles.fieldsContainer}>
+        {renderField("Phone Number", "phoneNumber")}
+        {renderField("Age", "age")}
+        {renderField("Academic Institution", "institution")}
+        {renderField("Degree", "degree")}
+        {renderField("Year of Study", "yearOfStudy")}
+        {renderPasswordField()}
+      </View>
     </View>
   );
 };
@@ -114,61 +228,143 @@ export default ProfileScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: "center",
     backgroundColor: "#FAD961",
     padding: 20,
+    paddingTop: 50,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+    position: "relative",
+  },
+  backButton: {
+    position: "absolute",
+    left: 0,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  profileContainer: {
+    alignItems: "center",
+    marginBottom: 30,
+  },
+  profileImageWrapper: {
+    position: "relative",
   },
   profileImage: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    marginBottom: 20,
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: "#fff",
   },
+  editIcon: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    backgroundColor: "#4CAF50",
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   name: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "bold",
-    marginBottom: 5,
+    color: "#333",
+    marginTop: 10,
   },
-  email: {
-    fontSize: 16,
-    color: "#666",
-    marginBottom: 20,
+  fieldsContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+    marginTop: 20,
   },
-  fieldContainer: {
+  fieldRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    width: "100%",
-    marginBottom: 15,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
   },
-  infoLabel: {
+  fieldLabel: {
     fontSize: 16,
     fontWeight: "bold",
     color: "#333",
-    flex: 1,
+    flex: 2,
   },
-  infoValue: {
+  fieldValue: {
     fontSize: 16,
     color: "#666",
-    flex: 2,
+    flex: 3,
   },
-  input: {
-    flex: 2,
+  fieldInput: {
+    flex: 1,
     borderWidth: 1,
     borderColor: "#ddd",
-    borderRadius: 5,
+    borderRadius: 10,
     paddingHorizontal: 10,
     height: 40,
+    backgroundColor: "#f9f9f9",
+    marginBottom: 10,
+  },
+  passwordRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  passwordBox: {
+    width: "100%",
     backgroundColor: "#fff",
+    borderRadius: 15,
+    padding: 15,
+    marginTop: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  passwordInput: {
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    height: 40,
+    backgroundColor: "#f9f9f9",
+    marginBottom: 10,
+  },
+  actionButtons: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 10,
   },
   icon: {
     marginLeft: 10,
   },
   errorText: {
     color: "red",
-    fontSize: 16,
+    fontSize: 14,
+    marginTop: 5,
+    textAlign: "center",
+  },
+  successText: {
+    color: "green",
+    fontSize: 14,
+    marginTop: 10,
     textAlign: "center",
   },
 });
