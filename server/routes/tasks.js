@@ -18,9 +18,23 @@ router.get("/", async (req, res) => {
 
 // Create a new task
 router.post("/", async (req, res) => {
-  const task = new Task(req.body);
+  const { title, description, latitude, longitude, time } = req.body;
+// location by coordinates
+  if (!latitude || !longitude) {
+    return res.status(400).json({ message: "Missing location coordinates" });
+  }
+
   try {
-    // Save the task to the database
+    const task = new Task({
+      title,
+      description,
+      location: {
+        type: "Point",
+        coordinates: [parseFloat(longitude), parseFloat(latitude)],
+      },
+      time,
+    });
+
     const newTask = await task.save();
 
     // Debug log for task creation
@@ -66,10 +80,25 @@ router.post("/", async (req, res) => {
   }
 });
 
-// Update a task
+// Update a task 
 router.patch("/:id", async (req, res) => {
+  const { title, description, time, latitude, longitude } = req.body;
+
+  const updateData = {
+    ...(title && { title }),
+    ...(description && { description }),
+    ...(time && { time }),
+  };
+
+  if (latitude && longitude) {
+    updateData.location = {
+      type: "Point",
+      coordinates: [parseFloat(longitude), parseFloat(latitude)],
+    };
+  }
+
   try {
-    const updatedTask = await Task.findByIdAndUpdate(req.params.id, req.body, {
+    const updatedTask = await Task.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
     });
     res.json(updatedTask);
@@ -137,6 +166,36 @@ router.get("/completed/:userId", async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error retrieving completed tasks" });
+  }
+});
+
+// GET /api/tasks/nearby?lat=32.0853&lng=34.7818&distance=5000/////// בדיקת קורדינטות ברדיוס של 5000 מטר
+router.get("/nearby", async (req, res) => {
+  const { lat, lng, distance = 5000 } = req.query;
+
+  if (!lat || !lng) {
+    return res.status(400).json({ message: "Missing latitude or longitude" });
+  }
+
+  try {
+    const tasks = await Task.find({
+      location: {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [parseFloat(lng), parseFloat(lat)],
+          },
+          $maxDistance: parseInt(distance),
+        },
+      },
+    });
+
+    res.json(tasks);
+  } catch (error) {
+    console.error("❌ Error in /nearby route:");
+    console.error("Full error:", error);
+    console.error("Error message:", error.message);
+    res.status(500).json({ message: error.message || "Error finding nearby tasks" });
   }
 });
 
