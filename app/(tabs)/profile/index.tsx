@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { router } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
 
 const ProfileScreen = () => {
   const { user } = useUser();
@@ -57,6 +58,45 @@ const ProfileScreen = () => {
     } catch (error) {
       console.error("Error changing password:", error);
       setPasswordError("Failed to change password. Please try again.");
+    }
+  };
+
+  const pickImage = async () => {
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (permissionResult.granted === false) {
+      alert("Permission to access camera roll is required!");
+      return;
+    }
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+      });
+
+      if (!result.canceled) {
+        const selectedAsset = result.assets[0];
+
+        const formData = new FormData();
+        formData.append("file", {
+          uri: selectedAsset.uri,
+          name: "profile-image.jpg",
+          type: "image/jpeg",
+        });
+
+        await user?.setProfileImage({
+          file: formData.get("file"),
+        });
+
+        await user?.reload();
+      }
+    } catch (error) {
+      console.error("Error updating profile image:", error);
+      alert("Failed to update profile picture. Please try again.");
     }
   };
 
@@ -201,7 +241,7 @@ const ProfileScreen = () => {
       <View style={styles.profileContainer}>
         <View style={styles.profileImageWrapper}>
           <Image source={{ uri: imageUrl }} style={styles.profileImage} />
-          <TouchableOpacity style={styles.editIcon}>
+          <TouchableOpacity style={styles.editIcon} onPress={pickImage}>
             <Ionicons name="camera" size={20} color="#fff" />
           </TouchableOpacity>
         </View>
