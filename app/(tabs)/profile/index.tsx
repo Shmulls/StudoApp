@@ -2,6 +2,7 @@ import { useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
+  Alert, // Add this
   Image,
   StyleSheet,
   Text,
@@ -127,7 +128,7 @@ const ProfileScreen = () => {
         <Ionicons
           name={editingField === field ? "checkmark" : "pencil"}
           size={20}
-          color="#4CAF50"
+          color="#333"
           style={styles.icon}
         />
       </TouchableOpacity>
@@ -197,12 +198,7 @@ const ProfileScreen = () => {
         </View>
       ) : (
         <TouchableOpacity onPress={() => setEditingField("password")}>
-          <Ionicons
-            name="pencil"
-            size={24}
-            color="#4CAF50"
-            style={styles.icon}
-          />
+          <Ionicons name="pencil" size={21} color="#333" style={styles.icon} />
         </TouchableOpacity>
       )}
 
@@ -259,6 +255,43 @@ const ProfileScreen = () => {
         {renderField("Year of Study", "yearOfStudy")}
         {renderPasswordField()}
       </View>
+
+      {/* Delete User Button */}
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={() => {
+          Alert.alert(
+            "Delete Account",
+            "Are you sure you want to delete your account? This action cannot be undone.",
+            [
+              {
+                text: "Cancel",
+                style: "cancel",
+              },
+              {
+                text: "Delete",
+                style: "destructive",
+                onPress: () => {
+                  user
+                    ?.delete()
+                    .then(() => {
+                      router.replace("/auth");
+                    })
+                    .catch((error) => {
+                      console.error("Error deleting user:", error);
+                      Alert.alert(
+                        "Error",
+                        "Failed to delete account. Please try again."
+                      );
+                    });
+                },
+              },
+            ]
+          );
+        }}
+      >
+        <Text style={styles.deleteButtonText}>Delete Account</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -270,13 +303,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#FAD961",
     padding: 20,
-    paddingTop: 50,
+    paddingTop: 70,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 20,
+    marginBottom: 25,
     position: "relative",
   },
   backButton: {
@@ -290,7 +323,7 @@ const styles = StyleSheet.create({
   },
   profileContainer: {
     alignItems: "center",
-    marginBottom: 30,
+    marginBottom: 3,
   },
   profileImageWrapper: {
     position: "relative",
@@ -299,8 +332,6 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    borderWidth: 3,
-    borderColor: "#fff",
   },
   editIcon: {
     position: "absolute",
@@ -317,25 +348,24 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "bold",
     color: "#333",
-    marginTop: 10,
+    marginTop: 5,
   },
   fieldsContainer: {
-    backgroundColor: "#fff",
     borderRadius: 15,
-    padding: 20,
+    padding: 15,
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 5,
-    marginTop: 20,
+    paddingHorizontal: 10,
   },
   fieldRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomWidth: 0.3,
+    borderBottomColor: "#333",
   },
   fieldLabel: {
     fontSize: 16,
@@ -363,18 +393,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
   },
   passwordBox: {
     width: "100%",
-    backgroundColor: "#fff",
     borderRadius: 15,
-    padding: 15,
+    padding: 5,
     marginTop: 10,
     shadowColor: "#000",
     shadowOpacity: 0.1,
-    shadowRadius: 10,
     elevation: 5,
   },
   passwordInput: {
@@ -405,6 +431,22 @@ const styles = StyleSheet.create({
     color: "green",
     fontSize: 14,
     marginTop: 10,
+    textAlign: "center",
+  },
+  deleteButton: {
+    backgroundColor: "#333",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 25,
+    marginTop: 30,
+    alignSelf: "center",
+    borderWidth: 2,
+    borderColor: "#333",
+  },
+  deleteButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
     textAlign: "center",
   },
 });

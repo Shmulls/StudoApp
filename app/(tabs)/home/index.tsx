@@ -142,11 +142,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   profileImage: {
-    width: 45,
-    height: 45,
+    width: 60,
+    height: 60,
     borderRadius: 40,
-    borderColor: "#fff",
-    borderWidth: 2,
     marginTop: 45,
   },
   headerIcons: {

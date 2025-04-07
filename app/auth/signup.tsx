@@ -102,6 +102,7 @@ const SignUpScreen = () => {
             onChangeText={setPassword}
             secureTextEntry
             placeholderTextColor="#888"
+            textContentType="oneTimeCode"
           />
           <TextInput
             style={styles.input}
@@ -110,6 +111,7 @@ const SignUpScreen = () => {
             onChangeText={setConfirmPassword}
             secureTextEntry
             placeholderTextColor="#888"
+            textContentType="oneTimeCode"
           />
           <TextInput
             style={styles.input}
