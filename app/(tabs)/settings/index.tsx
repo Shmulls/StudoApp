@@ -1,14 +1,7 @@
 import { SignedIn, useClerk } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import {
-  Button,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Button, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 const SettingsScreen = () => {
   const { signOut, user } = useClerk();
@@ -17,7 +10,6 @@ const SettingsScreen = () => {
     <View style={styles.container}>
       {/* Header Section */}
       <View style={styles.header}>
-        <Image source={{ uri: user?.imageUrl }} style={styles.profileImage} />
         <View style={styles.headerIcons}>
           <TouchableOpacity onPress={() => router.push("/home")}>
             <Ionicons name="home" size={24} color="#333" style={styles.icon} />
@@ -48,16 +40,8 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "flex-end", // Changed from space-between to flex-end
     marginBottom: 20,
-  },
-  profileImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    borderColor: "#fff",
-    borderWidth: 2,
-    marginTop: 60,
   },
   headerIcons: {
     flexDirection: "row",
