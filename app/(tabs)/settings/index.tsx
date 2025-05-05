@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-end", // Changed from space-between to flex-end
+    justifyContent: "flex-end",
     marginBottom: 20,
   },
   headerIcons: {
