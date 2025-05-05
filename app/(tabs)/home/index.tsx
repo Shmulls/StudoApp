@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  Button,
   FlatList,
   Image,
   StyleSheet,
@@ -123,6 +124,9 @@ const HomeScreen = () => {
           </View>
         )}
       />
+
+      {/* Calendar Button */}
+      <Button title="Go to Calendar" onPress={() => router.push("/calendar")} />
     </View>
   );
 };

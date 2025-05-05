@@ -17,17 +17,19 @@ export default function TabLayout() {
       {/* Home Screen */}
       <Stack.Screen name="home/index" />
       {/* Organization Feed Screen */}
-      <Stack.Screen name="organization-feed/index" />{" "}
+      <Stack.Screen name="organization-feed/index" />
       {/* Organization Settings Screen */}
       <Stack.Screen name="organization-settings/index" />
       {/* Organization notification */}
       <Stack.Screen name="organization-notification/index" />
       {/* Settings Screen */}
       <Stack.Screen name="settings/index" />
-      {/* Settings Screen */}
+      {/* Profile Screen */}
       <Stack.Screen name="profile/index" />
       {/* Notification Screen */}
       <Stack.Screen name="notification/index" />
+      {/* Calendar Screen */}
+      <Stack.Screen name="calendar/index" />
     </Stack>
   );
 }

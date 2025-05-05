@@ -51,14 +51,17 @@ export default function RootLayout() {
               options={{
                 headerShown: false,
               }}
-            />{" "}
+            />
             <Stack.Screen
               name="auth"
               options={{
                 headerShown: false,
               }}
-            />{" "}
-            // Public routes
+            />
+            <Stack.Screen
+              name="(tabs)/calendar/index"
+              options={{ title: "Calendar" }}
+            />
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>
