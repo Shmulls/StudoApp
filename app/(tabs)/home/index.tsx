@@ -7,8 +7,10 @@ import {
   Alert,
   FlatList,
   Image,
+  Modal,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -20,13 +22,16 @@ import { addTaskToCalendar } from "../../../utils/calendarUtils";
 const HomeScreen = () => {
   const { user } = useUser();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(false); // Add loading state
+  const [loading, setLoading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState("");
 
   // Fetch tasks from the backend
   useEffect(() => {
     const getTasks = async () => {
       try {
-        const { data } = await fetchTasks(); // Fetch tasks from the backend
+        const { data } = await fetchTasks();
         setTasks(data);
       } catch (error) {
         console.error("Error fetching tasks:", error);
@@ -37,23 +42,15 @@ const HomeScreen = () => {
   }, []);
 
   const handleSignUp = async (taskId: string) => {
-    console.log("handleSignUp called with taskId:", taskId);
     const task = tasks.find((t) => t._id === taskId);
-    if (!task) {
-      console.error("Task not found");
-      return;
-    }
-
-    console.log("Task time before adding to calendar:", task.time);
+    if (!task) return;
 
     const updatedTask = { ...task, signedUp: !task.signedUp };
     try {
-      setLoading(true); // Start loading
-
-      // Perform both operations in parallel
+      setLoading(true);
       await Promise.all([
-        updateTask(taskId, updatedTask), // Update the task in the backend
-        !task.signedUp && addTaskToCalendar(task), // Add the task to the calendar
+        updateTask(taskId, updatedTask),
+        !task.signedUp && addTaskToCalendar(task),
       ]);
 
       setTasks((prevTasks) =>
@@ -66,7 +63,38 @@ const HomeScreen = () => {
     } catch (error) {
       console.error("Error updating task:", error);
     } finally {
-      setLoading(false); // Stop loading
+      setLoading(false);
+    }
+  };
+
+  const handleComplete = (taskId: string) => {
+    setSelectedTaskId(taskId);
+    setModalVisible(true);
+  };
+
+  const submitFeedback = async () => {
+    if (!selectedTaskId) return;
+
+    try {
+      setLoading(true);
+      // Submit feedback to the backend (implement this API call)
+      console.log("Feedback submitted for task:", selectedTaskId, feedback);
+
+      // Optionally update the task state to mark it as completed
+      setTasks((prevTasks) =>
+        prevTasks.map((task) =>
+          task._id === selectedTaskId ? { ...task, completed: true } : task
+        )
+      );
+
+      Alert.alert("Success", "Feedback submitted successfully!");
+    } catch (error) {
+      console.error("Error submitting feedback:", error);
+    } finally {
+      setLoading(false);
+      setModalVisible(false);
+      setFeedback("");
+      setSelectedTaskId(null);
     }
   };
 
@@ -77,13 +105,48 @@ const HomeScreen = () => {
           <ActivityIndicator size="large" color="#0000ff" />
         </View>
       )}
+
+      {/* Feedback Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {/* Close Button */}
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setModalVisible(false)}
+            >
+              <Text style={styles.closeButtonText}>X</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.modalTitle}>Task Feedback</Text>
+            <TextInput
+              style={styles.feedbackInput}
+              placeholder="Enter your feedback"
+              value={feedback}
+              onChangeText={setFeedback}
+              multiline
+            />
+            <TouchableOpacity
+              style={styles.submitButton}
+              onPress={submitFeedback}
+            >
+              <Text style={styles.submitButtonText}>Submit</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Header Section */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.push("/profile")}>
           <Image source={{ uri: user?.imageUrl }} style={styles.profileImage} />
         </TouchableOpacity>
         <View style={styles.headerIcons}>
-          {/* Notification Icon */}
           <TouchableOpacity onPress={() => router.push("/notification")}>
             <Ionicons
               name="notifications-outline"
@@ -92,7 +155,6 @@ const HomeScreen = () => {
               style={styles.icon}
             />
           </TouchableOpacity>
-          {/* Settings Icon */}
           <TouchableOpacity onPress={() => router.push("/settings")}>
             <Ionicons
               name="settings-outline"
@@ -129,17 +191,27 @@ const HomeScreen = () => {
                 </Text>
               </Text>
             </View>
-            <TouchableOpacity
-              style={[
-                styles.taskButton,
-                item.signedUp && styles.taskButtonCompleted,
-              ]}
-              onPress={() => handleSignUp(item._id)} // Ensure this is correct
-            >
-              <Text style={styles.taskButtonText}>
-                {item.signedUp ? "Cancel" : "Register"}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.taskActions}>
+              <TouchableOpacity
+                style={[
+                  styles.taskButton,
+                  item.signedUp && styles.taskButtonCompleted,
+                ]}
+                onPress={() => handleSignUp(item._id)}
+              >
+                <Text style={styles.taskButtonText}>
+                  {item.signedUp ? "Cancel" : "Register"}
+                </Text>
+              </TouchableOpacity>
+              {item.signedUp && (
+                <TouchableOpacity
+                  style={styles.completeButton}
+                  onPress={() => handleComplete(item._id)}
+                >
+                  <Text style={styles.completeButtonText}>Complete</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         )}
       />
@@ -240,22 +312,28 @@ const styles = StyleSheet.create({
   bold: {
     fontWeight: "bold",
   },
+  taskActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    gap: 10,
+  },
   taskButton: {
     backgroundColor: "#4CAF50",
-    opacity: 0.8,
-    position: "absolute",
-    borderRadius: 9,
-    right: 20,
-    bottom: 8,
+    paddingVertical: 0.5,
+    paddingHorizontal: 4,
+    borderRadius: 5,
   },
   taskButtonCompleted: {
     backgroundColor: "#CC5500",
-    borderRadius: 9,
+    paddingVertical: 0.5,
+    paddingHorizontal: 4,
+    borderRadius: 5,
   },
   taskButtonText: {
     borderRadius: 4,
     padding: 8,
-    color: "#000",
+    color: "#fff",
     fontWeight: "bold",
   },
   loadingOverlay: {
@@ -264,5 +342,68 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     zIndex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalContent: {
+    width: "80%",
+    backgroundColor: "white",
+    borderRadius: 10,
+    padding: 20,
+    alignItems: "center",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  feedbackInput: {
+    width: "100%",
+    height: 100,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 20,
+    textAlignVertical: "top",
+  },
+  submitButton: {
+    backgroundColor: "#4CAF50",
+    padding: 10,
+    borderRadius: 5,
+  },
+  submitButtonText: {
+    color: "white",
+    fontWeight: "bold",
+  },
+  completeButton: {
+    backgroundColor: "#007BFF",
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    borderRadius: 5,
+  },
+  completeButtonText: {
+    color: "white",
+    fontWeight: "bold",
+  },
+  closeButton: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    backgroundColor: "#000",
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  closeButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
   },
 });

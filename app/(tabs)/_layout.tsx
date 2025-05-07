@@ -28,6 +28,8 @@ export default function TabLayout() {
       <Stack.Screen name="profile/index" />
       {/* Notification Screen */}
       <Stack.Screen name="notification/index" />
+      {/* History Screen */}
+      <Stack.Screen name="history/index" />
     </Stack>
   );
 }
