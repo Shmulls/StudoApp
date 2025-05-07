@@ -241,17 +241,18 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   taskButton: {
+    backgroundColor: "#4CAF50",
+    opacity: 0.8,
     position: "absolute",
+    borderRadius: 9,
     right: 20,
     bottom: 8,
   },
   taskButtonCompleted: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: "#CC5500",
     borderRadius: 9,
-    padding: 4,
   },
   taskButtonText: {
-    backgroundColor: "#4CAF50",
     borderRadius: 4,
     padding: 8,
     color: "#000",

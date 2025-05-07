@@ -44,7 +44,8 @@
         {
           "calendarPermission": "Allow $(PRODUCT_NAME) to access your calendar."
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true
