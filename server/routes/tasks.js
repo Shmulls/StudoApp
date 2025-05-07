@@ -18,12 +18,16 @@ router.get("/", async (req, res) => {
 
 // Create a new task
 router.post("/", async (req, res) => {
-  const task = new Task(req.body);
   try {
-    // Save the task to the database
+    // Ensure the time is a valid Date
+    const taskData = {
+      ...req.body,
+      time: new Date(req.body.time), // Convert to Date object
+    };
+
+    const task = new Task(taskData);
     const newTask = await task.save();
 
-    // Debug log for task creation
     console.log("Task created successfully:", newTask);
 
     // Create a new notification

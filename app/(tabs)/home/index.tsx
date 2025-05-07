@@ -104,7 +104,13 @@ const HomeScreen = () => {
               <Text style={styles.taskDescription}>{item.description}</Text>
               <Text style={styles.taskDetails}>
                 <Text style={styles.bold}>📍 {item.location}</Text>{" "}
-                <Text style={styles.bold}>⏰ {item.time}</Text>
+                <Text style={styles.bold}>
+                  ⏰{" "}
+                  {new Date(item.time).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </Text>
               </Text>
             </View>
             <TouchableOpacity
