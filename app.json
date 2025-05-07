@@ -38,6 +38,12 @@
         {
           "photosPermission": "The app needs access to your photos to let you choose a profile picture."
         }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Allow $(PRODUCT_NAME) to access your calendar."
+        }
       ]
     ],
     "experiments": {

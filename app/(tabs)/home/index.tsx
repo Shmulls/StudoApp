@@ -10,9 +10,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import * as Progress from "react-native-progress";
 import { fetchTasks, updateTask } from "../../../api";
+import CalendarProgress from "../../../components/CalendarProgress";
 import { Task } from "../../../types/task";
+import { addTaskToCalendar } from "../../../utils/calendarUtils";
 
 const HomeScreen = () => {
   const { user } = useUser();
@@ -39,12 +40,19 @@ const HomeScreen = () => {
       return;
     }
 
+    console.log("Task time before adding to calendar:", task.time); // Debugging line
+
     const updatedTask = { ...task, signedUp: !task.signedUp };
     try {
       await updateTask(taskId, updatedTask); // Update the task in the backend
       setTasks((prevTasks) =>
         prevTasks.map((task) => (task._id === taskId ? updatedTask : task))
       );
+
+      if (!task.signedUp) {
+        // Add the task to the calendar
+        await addTaskToCalendar(task);
+      }
     } catch (error) {
       console.error("Error updating task:", error);
     }
@@ -79,18 +87,8 @@ const HomeScreen = () => {
         </View>
       </View>
 
-      {/* Progress Bar */}
-      <View style={styles.progressContainer}>
-        <Text style={styles.progressTitle}>Achievement progress</Text>
-        <Progress.Bar
-          progress={tasks.filter((t) => t.signedUp).length / tasks.length || 0}
-          width={null}
-          height={10}
-          color="#333"
-          borderColor="#ddd"
-          style={styles.progressBar}
-        />
-      </View>
+      {/* Calendar Progress */}
+      <CalendarProgress tasks={tasks} />
 
       {/* Task Section */}
       <Text style={styles.tasksTitle}>
