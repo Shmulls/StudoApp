@@ -3,6 +3,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   StyleSheet,
@@ -18,6 +20,7 @@ import { addTaskToCalendar } from "../../../utils/calendarUtils";
 const HomeScreen = () => {
   const { user } = useUser();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(false); // Add loading state
 
   // Fetch tasks from the backend
   useEffect(() => {
@@ -34,32 +37,46 @@ const HomeScreen = () => {
   }, []);
 
   const handleSignUp = async (taskId: string) => {
+    console.log("handleSignUp called with taskId:", taskId);
     const task = tasks.find((t) => t._id === taskId);
     if (!task) {
       console.error("Task not found");
       return;
     }
 
-    console.log("Task time before adding to calendar:", task.time); // Debugging line
+    console.log("Task time before adding to calendar:", task.time);
 
     const updatedTask = { ...task, signedUp: !task.signedUp };
     try {
-      await updateTask(taskId, updatedTask); // Update the task in the backend
+      setLoading(true); // Start loading
+
+      // Perform both operations in parallel
+      await Promise.all([
+        updateTask(taskId, updatedTask), // Update the task in the backend
+        !task.signedUp && addTaskToCalendar(task), // Add the task to the calendar
+      ]);
+
       setTasks((prevTasks) =>
         prevTasks.map((task) => (task._id === taskId ? updatedTask : task))
       );
 
       if (!task.signedUp) {
-        // Add the task to the calendar
-        await addTaskToCalendar(task);
+        Alert.alert("Success", "Successfully added to calendar!");
       }
     } catch (error) {
       console.error("Error updating task:", error);
+    } finally {
+      setLoading(false); // Stop loading
     }
   };
 
   return (
     <View style={styles.container}>
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#0000ff" />
+        </View>
+      )}
       {/* Header Section */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.push("/profile")}>
@@ -103,7 +120,6 @@ const HomeScreen = () => {
               <Text style={styles.taskTitle}>{item.title}</Text>
               <Text style={styles.taskDescription}>{item.description}</Text>
               <Text style={styles.taskDetails}>
-                <Text style={styles.bold}>📍 {item.location}</Text>{" "}
                 <Text style={styles.bold}>
                   ⏰{" "}
                   {new Date(item.time).toLocaleTimeString([], {
@@ -118,10 +134,10 @@ const HomeScreen = () => {
                 styles.taskButton,
                 item.signedUp && styles.taskButtonCompleted,
               ]}
-              onPress={() => handleSignUp(item._id)}
+              onPress={() => handleSignUp(item._id)} // Ensure this is correct
             >
               <Text style={styles.taskButtonText}>
-                {item.signedUp ? "Signed up" : "Sign Up"}
+                {item.signedUp ? "Cancel" : "Register"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -182,15 +198,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   taskCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
     borderColor: "#000",
-    borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 15,
     padding: 15,
     marginBottom: 15,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
+    shadowColor: "#fff",
+    shadowOpacity: 2,
     shadowRadius: 5,
-    elevation: 2,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -236,7 +251,17 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   taskButtonText: {
-    color: "#fff",
+    backgroundColor: "#4CAF50",
+    borderRadius: 4,
+    padding: 8,
+    color: "#000",
     fontWeight: "bold",
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1,
   },
 });

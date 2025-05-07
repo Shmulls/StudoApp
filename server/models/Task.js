@@ -1,11 +1,12 @@
 const mongoose = require("mongoose");
 
-const TaskSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  description: { type: String, required: true },
-  location: { type: String, required: true },
-  time: { type: Date, required: true }, // Change to Date type
-  signedUp: { type: Boolean, default: false },
+const taskSchema = new mongoose.Schema({
+  title: String,
+  description: String,
+  location: Object,
+  time: mongoose.Schema.Types.Mixed,
+  signedUp: Boolean,
 });
 
-module.exports = mongoose.model("Task", TaskSchema);
+module.exports = mongoose.model("Task", taskSchema, "tasks");
+//                                          ^^^^^^^^^^^^^^^^ forces collection name

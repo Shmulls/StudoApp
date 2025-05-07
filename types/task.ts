@@ -3,7 +3,7 @@ export interface Task {
   title: string;
   description: string;
   location: string;
-  time: string;
+  time: any;
   signedUp: boolean;
 }
 

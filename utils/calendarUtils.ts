@@ -5,7 +5,7 @@ export const addTaskToCalendar = async (task: Task) => {
   try {
     // Request calendar permissions
     const { status } = await Calendar.requestCalendarPermissionsAsync();
-    console.log("Calendar permission status:", status); // Debugging line
+    console.log("Calendar permission status:", status);
     if (status !== "granted") {
       console.error("Calendar permissions not granted");
       return;
@@ -13,6 +13,7 @@ export const addTaskToCalendar = async (task: Task) => {
 
     // Get default calendar
     const calendars = await Calendar.getCalendarsAsync();
+    console.log("Available calendars:", calendars);
     const defaultCalendar = calendars.find(
       (cal) => cal.isPrimary || cal.source.name === "Default"
     );
@@ -23,12 +24,7 @@ export const addTaskToCalendar = async (task: Task) => {
     }
 
     // Validate task time
-    console.log("Task time:", task.time); // Debugging line
-    if (!task.time || isNaN(new Date(task.time).getTime())) {
-      console.error("Invalid task time:", task.time);
-      return;
-    }
-
+    console.log("Task time:", task.time);
     const startDate = new Date(task.time);
     const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1 hour duration
 
