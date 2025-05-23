@@ -14,7 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { fetchTasks, updateTask } from "../../../api";
+import { addCompletedTask, fetchTasks, updateTask } from "../../../api";
 import CalendarProgress from "../../../components/CalendarProgress";
 import { Task } from "../../../types/task";
 import { addTaskToCalendar } from "../../../utils/calendarUtils";
@@ -77,8 +77,25 @@ const HomeScreen = () => {
 
     try {
       setLoading(true);
-      // Submit feedback to the backend (implement this API call)
-      console.log("Feedback submitted for task:", selectedTaskId, feedback);
+
+      // Find the completed task
+      const completedTask = tasks.find((task) => task._id === selectedTaskId);
+      if (!completedTask) return;
+
+      // Prepare completed task data
+      const completedTaskData = {
+        userId: user?.id,
+        taskId: completedTask._id,
+        title: completedTask.title,
+        description: completedTask.description,
+        location: completedTask.location,
+        time: completedTask.time,
+        signedUp: completedTask.signedUp,
+        feedback, // Optionally add feedback if your model supports it
+      };
+
+      // Send to backend
+      await addCompletedTask(completedTaskData);
 
       // Optionally update the task state to mark it as completed
       setTasks((prevTasks) =>
@@ -163,6 +180,13 @@ const HomeScreen = () => {
               style={styles.icon}
             />
           </TouchableOpacity>
+          {/* History Button as Icon */}
+          <TouchableOpacity
+            onPress={() => router.push("/history")}
+            style={styles.icon}
+          >
+            <Ionicons name="cloud-done-outline" size={24} color="#333" />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -215,6 +239,14 @@ const HomeScreen = () => {
           </View>
         )}
       />
+
+      {/* Remove the old History Button at the bottom */}
+      {/* <TouchableOpacity
+        style={styles.historyButton}
+        onPress={() => router.push("/history")}
+      >
+        <Text style={styles.historyButtonText}>Go to History</Text>
+      </TouchableOpacity> */}
     </View>
   );
 };
@@ -402,6 +434,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   closeButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  historyButton: {
+    backgroundColor: "#007BFF",
+    padding: 10,
+    borderRadius: 5,
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  historyButtonText: {
     color: "white",
     fontWeight: "bold",
     fontSize: 16,

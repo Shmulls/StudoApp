@@ -7,7 +7,10 @@ const CompletedTaskSchema = new mongoose.Schema({
   completedAt: { type: Date, default: Date.now }, // Timestamp of when the task was completed
   title: { type: String, required: true }, // Task title
   description: { type: String, required: true }, // Task description
-  location: { type: String, required: true }, // Task location
+  location: {
+    type: { type: String, enum: ["Point"], required: true },
+    coordinates: { type: [Number], required: true },
+  }, // Task location
   time: { type: String, required: true }, // Task time
   signedUp: { type: Boolean, default: false }, // Whether the user is signed up for the task
 });

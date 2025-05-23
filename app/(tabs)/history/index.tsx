@@ -1,8 +1,23 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
+import { fetchCompletedTasks } from "../../../api";
+import { Task } from "../../../types/task";
 
-const HistoryTasks = ({ route }: any) => {
-  const { completedTasks } = route.params;
+const HistoryTasks = () => {
+  const [completedTasks, setCompletedTasks] = useState<Task[]>([]); // Explicitly type the state
+
+  useEffect(() => {
+    const getCompletedTasks = async () => {
+      try {
+        const { data } = await fetchCompletedTasks();
+        setCompletedTasks(data);
+      } catch (error) {
+        console.error("Error fetching completed tasks:", error);
+      }
+    };
+
+    getCompletedTasks();
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -15,7 +30,10 @@ const HistoryTasks = ({ route }: any) => {
             <Text style={styles.taskTitle}>{item.title}</Text>
             <Text style={styles.taskDescription}>{item.description}</Text>
             <Text style={styles.taskDetails}>
-              Completed at: {new Date(item.completedAt).toLocaleString()}
+              Completed at:{" "}
+              {item.completedAt
+                ? new Date(item.completedAt).toLocaleString()
+                : "N/A"}
             </Text>
           </View>
         )}

@@ -47,6 +47,9 @@ io.on("connection", (socket) => {
 const taskRoutes = require("./routes/tasks");
 app.use("/api/tasks", taskRoutes);
 
+const completedTasksRouter = require("./routes/completedtasks");
+app.use("/api", completedTasksRouter);
+
 // Start the server
 const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

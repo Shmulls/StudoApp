@@ -144,4 +144,15 @@ router.get("/completed/:userId", async (req, res) => {
   }
 });
 
+// Get all completed tasks
+router.get("/completed", async (req, res) => {
+  try {
+    const completedTasks = await Task.find({ completed: true });
+    res.json(completedTasks);
+  } catch (error) {
+    console.error("Error fetching completed tasks:", error);
+    res.status(500).json({ message: "Error fetching completed tasks" });
+  }
+});
+
 module.exports = router;
