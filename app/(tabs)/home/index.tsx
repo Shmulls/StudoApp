@@ -1,3 +1,4 @@
+import CompletedTaskCard from "@/components/CompletedTaskCard";
 import { useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -12,19 +13,45 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import CalendarProgress from "../../../components/CalendarProgress";
+import { WeekCalendar } from "react-native-calendars";
 import FeedbackModal from "../../../components/FeedbackModal";
+import MilestoneProgressBar from "../../../components/MilestoneProgressBar";
 import TaskCard from "../../../components/TaskCard";
-import { useTasks } from "../../../hooks/useTasks"; // <-- import the hook
+import { useTasks } from "../../../hooks/useTasks";
 
 const HomeScreen = () => {
   const { user } = useUser();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("");
+  const [tab, setTab] = useState<"new" | "assigned" | "complete">("new");
 
-  const { visibleTasks, loading, handleSignUp, handleComplete, tasks } =
+  const { tasks, visibleTasks, loading, handleSignUp, handleComplete } =
     useTasks(user);
+
+  // Progress bar data
+  const completedCount = tasks.filter((t) => t.completed).length;
+  const totalCount = tasks.length;
+
+  // Task filters for tabs
+  const newTasks = visibleTasks.filter((t) => !t.signedUp);
+  const assignedTasks = visibleTasks.filter((t) => t.signedUp);
+  const completedTasks = tasks.filter((t) => t.completed);
+
+  // Calendar marking for tasks
+  const markedDates = tasks.reduce((acc, task) => {
+    if (task.time) {
+      const dateObj = new Date(task.time);
+      if (!isNaN(dateObj.getTime())) {
+        const dateStr = dateObj.toISOString().split("T")[0];
+        acc[dateStr] = {
+          marked: true,
+          dotColor: task.completed ? "#4CAF50" : "#FAD961",
+        };
+      }
+    }
+    return acc;
+  }, {} as Record<string, any>);
 
   // Show feedback modal and handle feedback submission
   const onComplete = (taskId: string) => {
@@ -51,54 +78,135 @@ const HomeScreen = () => {
         </View>
       )}
 
-      {/* Header Section */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push("/profile")}>
-          <Image source={{ uri: user?.imageUrl }} style={styles.profileImage} />
-        </TouchableOpacity>
-        <View style={styles.headerIcons}>
-          <TouchableOpacity onPress={() => router.push("/notification")}>
-            <Ionicons
-              name="notifications-outline"
-              size={24}
-              color="#333"
-              style={styles.icon}
+      {/* Always render the header, welcome section, progress bar, and calendar */}
+      <>
+        {/* Header Section */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.push("/profile")}>
+            <Image
+              source={{ uri: user?.imageUrl }}
+              style={styles.profileImage}
             />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push("/settings")}>
-            <Ionicons
-              name="settings-outline"
-              size={24}
-              color="#333"
-              style={styles.icon}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => router.push("/history")}
-            style={styles.icon}
-          >
-            <Ionicons name="cloud-done-outline" size={24} color="#333" />
-          </TouchableOpacity>
+          <View style={styles.headerIcons}>
+            <TouchableOpacity onPress={() => router.push("/notification")}>
+              <Ionicons
+                name="notifications-outline"
+                size={24}
+                color="#333"
+                style={styles.icon}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push("/settings")}>
+              <Ionicons
+                name="settings-outline"
+                size={24}
+                color="#333"
+                style={styles.icon}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
+
+        {/* Welcome Section */}
+        <Text style={styles.welcomeText}>
+          Welcome Back, <Text style={styles.bold}>{user?.firstName}</Text>!{" "}
+          <Text style={{ color: "#FF9800" }}>🧡</Text>
+        </Text>
+
+        {/* Milestone Progress Bar */}
+        <MilestoneProgressBar completed={completedCount} total={totalCount} />
+
+        {/* Calendar View */}
+        <View style={styles.calendarContainer}>
+          <WeekCalendar
+            current={new Date().toISOString().split("T")[0]}
+            markedDates={markedDates}
+            theme={{
+              backgroundColor: "#fff",
+              calendarBackground: "#fff",
+              textSectionTitleColor: "#222",
+              selectedDayBackgroundColor: "#FAD961",
+              selectedDayTextColor: "#fff",
+              todayTextColor: "#FAD961",
+              dayTextColor: "#222",
+              arrowColor: "#FAD961",
+              monthTextColor: "#222",
+              indicatorColor: "#FAD961",
+              textDayFontWeight: "500",
+              textMonthFontWeight: "bold",
+              textDayHeaderFontWeight: "bold",
+              textDayFontSize: 16,
+              textMonthFontSize: 18,
+              textDayHeaderFontSize: 14,
+            }}
+            style={{ height: 90 }} // makes it compact
+          />
+        </View>
+      </>
+
+      {/* Tabs for New, Assigned, Complete */}
+      <View style={styles.tabRow}>
+        <TouchableOpacity
+          onPress={() => setTab("new")}
+          style={[styles.tab, tab === "new" && styles.tabActive]}
+        >
+          <Text style={[styles.tabText, tab === "new" && styles.tabTextActive]}>
+            New
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setTab("assigned")}
+          style={[styles.tab, tab === "assigned" && styles.tabActive]}
+        >
+          <Text
+            style={[styles.tabText, tab === "assigned" && styles.tabTextActive]}
+          >
+            Assigned
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setTab("complete")}
+          style={[styles.tab, tab === "complete" && styles.tabActive]}
+        >
+          <Text
+            style={[styles.tabText, tab === "complete" && styles.tabTextActive]}
+          >
+            Complete
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Calendar Progress */}
-      <CalendarProgress tasks={tasks} />
-
       {/* Task Section */}
-      <Text style={styles.tasksTitle}>
-        Volunteers available in your area ({visibleTasks.length})
-      </Text>
       <FlatList
-        data={visibleTasks}
+        data={
+          tab === "new"
+            ? newTasks
+            : tab === "assigned"
+            ? assignedTasks
+            : completedTasks // Show completed tasks for the "Complete" tab
+        }
         keyExtractor={(item) => item._id}
-        renderItem={({ item }) => (
-          <TaskCard
-            task={item}
-            onSignUp={handleSignUp}
-            onComplete={onComplete}
-          />
-        )}
+        renderItem={({ item }) =>
+          tab === "complete" ? (
+            <CompletedTaskCard task={item} /> // Use simplified card for completed tasks
+          ) : (
+            <TaskCard
+              task={item}
+              onSignUp={handleSignUp}
+              onComplete={onComplete}
+            />
+          )
+        }
+        ListEmptyComponent={
+          <Text style={{ textAlign: "center", color: "#888", marginTop: 20 }}>
+            {tab === "new"
+              ? "No new tasks available."
+              : tab === "assigned"
+              ? "No assigned tasks."
+              : "No completed tasks."}
+          </Text>
+        }
       />
 
       <FeedbackModal
@@ -125,7 +233,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 20,
+    marginBottom: 10,
   },
   profileImage: {
     width: 60,
@@ -141,94 +249,49 @@ const styles = StyleSheet.create({
   icon: {
     marginLeft: 20,
   },
-  menuIcon: {
-    fontSize: 24,
-    color: "#333",
-  },
-  progressContainer: {
-    marginBottom: 30,
-  },
-  progressTitle: {
+  welcomeText: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "500",
     marginBottom: 10,
-  },
-  progressBar: {
-    borderColor: "#00000",
-    borderRadius: 5,
-    width: "100%",
-  },
-  tasksTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  taskCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.5)",
-    borderColor: "#000",
-    borderRadius: 15,
-    padding: 15,
-    marginBottom: 15,
-    shadowColor: "#fff",
-    shadowOpacity: 2,
-    shadowRadius: 5,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  taskInfo: {
-    flex: 1,
-    marginRight: 10,
-  },
-  taskTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 5,
-  },
-  taskDescription: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 5,
-  },
-  checkedICON: {
-    width: 30,
-    height: 30,
-  },
-  signupICON: {
-    // width: 50,
-    // height: 30,
-    right: 10,
-  },
-  taskDetails: {
-    fontSize: 12,
-    color: "#333",
+    marginTop: 10,
+    color: "#222",
   },
   bold: {
     fontWeight: "bold",
+    color: "#222",
   },
-  taskActions: {
+  calendarContainer: {
+    marginVertical: 10,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#fff",
+    elevation: 2,
+  },
+  tabRow: {
     flexDirection: "row",
+    justifyContent: "space-around",
+    marginVertical: 14,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 4,
+    elevation: 1,
+  },
+  tab: {
+    flex: 1,
     alignItems: "center",
-    justifyContent: "flex-start",
-    gap: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
-  taskButton: {
-    backgroundColor: "#4CAF50",
-    paddingVertical: 0.5,
-    paddingHorizontal: 4,
-    borderRadius: 5,
+  tabActive: {
+    backgroundColor: "#FAD961",
   },
-  taskButtonCompleted: {
-    backgroundColor: "#CC5500",
-    paddingVertical: 0.5,
-    paddingHorizontal: 4,
-    borderRadius: 5,
-  },
-  taskButtonText: {
-    borderRadius: 4,
-    padding: 8,
-    color: "#fff",
+  tabText: {
+    color: "#888",
     fontWeight: "bold",
+    fontSize: 15,
+  },
+  tabTextActive: {
+    color: "#222",
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -236,80 +299,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     zIndex: 1,
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-  modalContent: {
-    width: "80%",
-    backgroundColor: "white",
-    borderRadius: 10,
-    padding: 20,
-    alignItems: "center",
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  feedbackInput: {
-    width: "100%",
-    height: 100,
-    borderColor: "#ccc",
-    borderWidth: 1,
-    borderRadius: 5,
-    padding: 10,
-    marginBottom: 20,
-    textAlignVertical: "top",
-  },
-  submitButton: {
-    backgroundColor: "#4CAF50",
-    padding: 10,
-    borderRadius: 5,
-  },
-  submitButtonText: {
-    color: "white",
-    fontWeight: "bold",
-  },
-  completeButton: {
-    backgroundColor: "#007BFF",
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    borderRadius: 5,
-  },
-  completeButtonText: {
-    color: "white",
-    fontWeight: "bold",
-  },
-  closeButton: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    backgroundColor: "#000",
-    borderRadius: 15,
-    width: 30,
-    height: 30,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  closeButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  historyButton: {
-    backgroundColor: "#007BFF",
-    padding: 10,
-    borderRadius: 5,
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  historyButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 16,
   },
 });
