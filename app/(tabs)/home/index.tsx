@@ -15,6 +15,7 @@ import {
 import { addCompletedTask, fetchTasks, updateTask } from "../../../api";
 import CalendarProgress from "../../../components/CalendarProgress";
 import FeedbackModal from "../../../components/FeedbackModal";
+import TaskCard from "../../../components/TaskCard";
 import { Task } from "../../../types/task";
 import { addTaskToCalendar } from "../../../utils/calendarUtils";
 
@@ -171,42 +172,11 @@ const HomeScreen = () => {
         data={visibleTasks}
         keyExtractor={(item) => item._id}
         renderItem={({ item }) => (
-          <View style={styles.taskCard}>
-            <View style={styles.taskInfo}>
-              <Text style={styles.taskTitle}>{item.title}</Text>
-              <Text style={styles.taskDescription}>{item.description}</Text>
-              <Text style={styles.taskDetails}>
-                <Text style={styles.bold}>
-                  ⏰{" "}
-                  {new Date(item.time).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </Text>
-              </Text>
-            </View>
-            <View style={styles.taskActions}>
-              <TouchableOpacity
-                style={[
-                  styles.taskButton,
-                  item.signedUp && styles.taskButtonCompleted,
-                ]}
-                onPress={() => handleSignUp(item._id)}
-              >
-                <Text style={styles.taskButtonText}>
-                  {item.signedUp ? "Cancel" : "Register"}
-                </Text>
-              </TouchableOpacity>
-              {item.signedUp && (
-                <TouchableOpacity
-                  style={styles.completeButton}
-                  onPress={() => handleComplete(item._id)}
-                >
-                  <Text style={styles.completeButtonText}>Complete</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
+          <TaskCard
+            task={item}
+            onSignUp={handleSignUp}
+            onComplete={handleComplete}
+          />
         )}
       />
 
