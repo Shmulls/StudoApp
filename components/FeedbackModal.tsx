@@ -36,7 +36,9 @@ export default function FeedbackModal({
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Ionicons name="close" size={24} color="#333" />
           </TouchableOpacity>
-          <Text style={styles.title}>Task Feedback</Text>
+          <Text style={styles.title}>
+            Great Job completing the volunteering task!
+          </Text>
           <TextInput
             style={styles.input}
             placeholder="How did it go? Share your experience..."
@@ -69,7 +71,7 @@ const styles = StyleSheet.create({
   },
   content: {
     width: "90%",
-    backgroundColor: "#fff",
+    backgroundColor: "#FAD961",
     borderRadius: 18,
     padding: 28,
     alignItems: "center",

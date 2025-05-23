@@ -1,7 +1,7 @@
 import { useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,114 +12,36 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { addCompletedTask, fetchTasks, updateTask } from "../../../api";
 import CalendarProgress from "../../../components/CalendarProgress";
 import FeedbackModal from "../../../components/FeedbackModal";
 import TaskCard from "../../../components/TaskCard";
-import { Task } from "../../../types/task";
-import { addTaskToCalendar } from "../../../utils/calendarUtils";
+import { useTasks } from "../../../hooks/useTasks"; // <-- import the hook
 
 const HomeScreen = () => {
   const { user } = useUser();
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("");
 
-  // Fetch tasks from the backend
-  useEffect(() => {
-    const getTasks = async () => {
-      try {
-        const { data } = await fetchTasks();
-        setTasks(data);
-      } catch (error) {
-        console.error("Error fetching tasks:", error);
-      }
-    };
+  const { visibleTasks, loading, handleSignUp, handleComplete, tasks } =
+    useTasks(user);
 
-    getTasks();
-  }, []);
-
-  const handleSignUp = async (taskId: string) => {
-    const task = tasks.find((t) => t._id === taskId);
-    if (!task) return;
-
-    const updatedTask = { ...task, signedUp: !task.signedUp };
-    try {
-      setLoading(true);
-      await Promise.all([
-        updateTask(taskId, updatedTask),
-        !task.signedUp && addTaskToCalendar(task),
-      ]);
-
-      setTasks((prevTasks) =>
-        prevTasks.map((task) => (task._id === taskId ? updatedTask : task))
-      );
-
-      if (!task.signedUp) {
-        Alert.alert("Success", "Successfully added to calendar!");
-      }
-    } catch (error) {
-      console.error("Error updating task:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleComplete = (taskId: string) => {
+  // Show feedback modal and handle feedback submission
+  const onComplete = (taskId: string) => {
     setSelectedTaskId(taskId);
     setModalVisible(true);
   };
 
   const submitFeedback = async () => {
     if (!selectedTaskId) return;
-
-    try {
-      setLoading(true);
-
-      // Find the completed task
-      const completedTask = tasks.find((task) => task._id === selectedTaskId);
-      if (!completedTask) return;
-
-      // Prepare completed task data
-      const completedTaskData = {
-        userId: user?.id,
-        taskId: completedTask._id,
-        title: completedTask.title,
-        description: completedTask.description,
-        location: completedTask.location,
-        time: completedTask.time,
-        signedUp: completedTask.signedUp,
-        feedback,
-      };
-
-      // Send to backend
-      await addCompletedTask(completedTaskData);
-
-      // Mark the original task as completed in the backend
-      await updateTask(selectedTaskId, { ...completedTask, completed: true });
-
-      // Update local state
-      setTasks((prevTasks) =>
-        prevTasks.map((task) =>
-          task._id === selectedTaskId ? { ...task, completed: true } : task
-        )
-      );
-
+    const success = await handleComplete(selectedTaskId, feedback);
+    if (success) {
       Alert.alert("Success", "Feedback submitted successfully!");
-    } catch (error) {
-      console.error("Error submitting feedback:", error);
-    } finally {
-      setLoading(false);
-      setModalVisible(false);
-      setFeedback("");
-      setSelectedTaskId(null);
     }
+    setModalVisible(false);
+    setFeedback("");
+    setSelectedTaskId(null);
   };
-
-  // Filter out completed tasks so only incomplete tasks show in the home feed
-  const visibleTasks = tasks.filter((task) => !task.completed);
 
   return (
     <View style={styles.container}>
@@ -151,7 +73,6 @@ const HomeScreen = () => {
               style={styles.icon}
             />
           </TouchableOpacity>
-          {/* History Button as Icon */}
           <TouchableOpacity
             onPress={() => router.push("/history")}
             style={styles.icon}
@@ -175,7 +96,7 @@ const HomeScreen = () => {
           <TaskCard
             task={item}
             onSignUp={handleSignUp}
-            onComplete={handleComplete}
+            onComplete={onComplete}
           />
         )}
       />
