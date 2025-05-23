@@ -29,7 +29,7 @@ const HistoryTasks = () => {
 
   return (
     <View style={styles.container}>
-      <View style={{ height: 80 }} /> {/* ~3 inches of space above header */}
+      <View style={{ height: 80 }} />
       <View style={styles.header}>
         <Text style={styles.title}>Completed Tasks</Text>
         <View style={styles.headerIcons}>

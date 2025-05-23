@@ -11,25 +11,16 @@ export default function TabLayout() {
   return (
     <Stack
       screenOptions={{
-        headerShown: false, // Ensure headers are hidden if needed
+        headerShown: false,
       }}
     >
-      {/* Home Screen */}
       <Stack.Screen name="home/index" />
-      {/* Organization Feed Screen */}
-      <Stack.Screen name="organization-feed/index" />{" "}
-      {/* Organization Settings Screen */}
+      <Stack.Screen name="organization-feed/index" />
       <Stack.Screen name="organization-settings/index" />
-      {/* Organization notification */}
       <Stack.Screen name="organization-notification/index" />
-      {/* Settings Screen */}
       <Stack.Screen name="settings/index" />
-      {/* Settings Screen */}
       <Stack.Screen name="profile/index" />
-      {/* Notification Screen */}
       <Stack.Screen name="notification/index" />
-      {/* History Screen */}
-      <Stack.Screen name="history/index" />
     </Stack>
   );
 }

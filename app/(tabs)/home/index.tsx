@@ -7,15 +7,14 @@ import {
   Alert,
   FlatList,
   Image,
-  Modal,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { addCompletedTask, fetchTasks, updateTask } from "../../../api";
 import CalendarProgress from "../../../components/CalendarProgress";
+import FeedbackModal from "../../../components/FeedbackModal";
 import { Task } from "../../../types/task";
 import { addTaskToCalendar } from "../../../utils/calendarUtils";
 
@@ -91,13 +90,16 @@ const HomeScreen = () => {
         location: completedTask.location,
         time: completedTask.time,
         signedUp: completedTask.signedUp,
-        feedback, // Optionally add feedback if your model supports it
+        feedback,
       };
 
       // Send to backend
       await addCompletedTask(completedTaskData);
 
-      // Optionally update the task state to mark it as completed
+      // Mark the original task as completed in the backend
+      await updateTask(selectedTaskId, { ...completedTask, completed: true });
+
+      // Update local state
       setTasks((prevTasks) =>
         prevTasks.map((task) =>
           task._id === selectedTaskId ? { ...task, completed: true } : task
@@ -115,48 +117,16 @@ const HomeScreen = () => {
     }
   };
 
+  // Filter out completed tasks so only incomplete tasks show in the home feed
+  const visibleTasks = tasks.filter((task) => !task.completed);
+
   return (
     <View style={styles.container}>
-      {loading && (
+      {loading && !modalVisible && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#0000ff" />
         </View>
       )}
-
-      {/* Feedback Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            {/* Close Button */}
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setModalVisible(false)}
-            >
-              <Text style={styles.closeButtonText}>X</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.modalTitle}>Task Feedback</Text>
-            <TextInput
-              style={styles.feedbackInput}
-              placeholder="Enter your feedback"
-              value={feedback}
-              onChangeText={setFeedback}
-              multiline
-            />
-            <TouchableOpacity
-              style={styles.submitButton}
-              onPress={submitFeedback}
-            >
-              <Text style={styles.submitButtonText}>Submit</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
 
       {/* Header Section */}
       <View style={styles.header}>
@@ -195,10 +165,10 @@ const HomeScreen = () => {
 
       {/* Task Section */}
       <Text style={styles.tasksTitle}>
-        Volunteers available in your area ({tasks.length})
+        Volunteers available in your area ({visibleTasks.length})
       </Text>
       <FlatList
-        data={tasks}
+        data={visibleTasks}
         keyExtractor={(item) => item._id}
         renderItem={({ item }) => (
           <View style={styles.taskCard}>
@@ -240,13 +210,14 @@ const HomeScreen = () => {
         )}
       />
 
-      {/* Remove the old History Button at the bottom */}
-      {/* <TouchableOpacity
-        style={styles.historyButton}
-        onPress={() => router.push("/history")}
-      >
-        <Text style={styles.historyButtonText}>Go to History</Text>
-      </TouchableOpacity> */}
+      <FeedbackModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        feedback={feedback}
+        setFeedback={setFeedback}
+        onSubmit={submitFeedback}
+        loading={loading}
+      />
     </View>
   );
 };

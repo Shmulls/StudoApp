@@ -6,7 +6,7 @@ const taskSchema = new mongoose.Schema({
   location: Object,
   time: mongoose.Schema.Types.Mixed,
   signedUp: Boolean,
+  completed: { type: Boolean, default: false },
 });
 
 module.exports = mongoose.model("Task", taskSchema, "tasks");
-//                                          ^^^^^^^^^^^^^^^^ forces collection name
