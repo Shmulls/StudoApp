@@ -1,5 +1,7 @@
 import { useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert, // Add this
@@ -10,8 +12,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { router } from "expo-router";
-import * as ImagePicker from "expo-image-picker";
 
 const ProfileScreen = () => {
   const { user } = useUser();
@@ -353,10 +353,6 @@ const styles = StyleSheet.create({
   fieldsContainer: {
     borderRadius: 15,
     padding: 15,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
     paddingHorizontal: 10,
   },
   fieldRow: {

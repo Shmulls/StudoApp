@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { WeekCalendar } from "react-native-calendars";
+import { CalendarProvider, WeekCalendar } from "react-native-calendars";
 import FeedbackModal from "../../../components/FeedbackModal";
 import MilestoneProgressBar from "../../../components/MilestoneProgressBar";
 import TaskCard from "../../../components/TaskCard";
@@ -25,6 +25,7 @@ const HomeScreen = () => {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("");
   const [tab, setTab] = useState<"new" | "assigned" | "complete">("new");
+  const [selectedDate, setSelectedDate] = useState<string | null>(null); // New state
 
   const { tasks, visibleTasks, loading, handleSignUp, handleComplete } =
     useTasks(user);
@@ -78,72 +79,93 @@ const HomeScreen = () => {
         </View>
       )}
 
-      {/* Always render the header, welcome section, progress bar, and calendar */}
-      <>
-        {/* Header Section */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.push("/profile")}>
-            <Image
-              source={{ uri: user?.imageUrl }}
-              style={styles.profileImage}
-            />
-          </TouchableOpacity>
-          <View style={styles.headerIcons}>
-            <TouchableOpacity onPress={() => router.push("/notification")}>
-              <Ionicons
-                name="notifications-outline"
-                size={24}
-                color="#333"
-                style={styles.icon}
+      {/* Conditionally Render Header, Progress Bar, and Calendar */}
+      {tab !== "complete" && (
+        <>
+          {/* Header Section */}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.push("/profile")}>
+              <Image
+                source={{ uri: user?.imageUrl }}
+                style={styles.profileImage}
               />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push("/settings")}>
-              <Ionicons
-                name="settings-outline"
-                size={24}
-                color="#333"
-                style={styles.icon}
-              />
-            </TouchableOpacity>
+            <View style={styles.headerIcons}>
+              <TouchableOpacity onPress={() => router.push("/notification")}>
+                <Ionicons
+                  name="notifications-outline"
+                  size={24}
+                  color="#333"
+                  style={styles.icon}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push("/settings")}>
+                <Ionicons
+                  name="settings-outline"
+                  size={24}
+                  color="#333"
+                  style={styles.icon}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
 
-        {/* Welcome Section */}
-        <Text style={styles.welcomeText}>
-          Welcome Back, <Text style={styles.bold}>{user?.firstName}</Text>!{" "}
-          <Text style={{ color: "#FF9800" }}>🧡</Text>
-        </Text>
+          {/* Welcome Section */}
+          <Text style={styles.welcomeText}>
+            Welcome Back, <Text style={styles.bold}>{user?.firstName}</Text>!{" "}
+            <Text style={{ color: "#FF9800" }}>🧡</Text>
+          </Text>
 
-        {/* Milestone Progress Bar */}
-        <MilestoneProgressBar completed={completedCount} total={totalCount} />
+          {/* Milestone Progress Bar */}
+          <MilestoneProgressBar completed={completedCount} total={totalCount} />
 
-        {/* Calendar View */}
-        <View style={styles.calendarContainer}>
-          <WeekCalendar
-            current={new Date().toISOString().split("T")[0]}
-            markedDates={markedDates}
-            theme={{
-              backgroundColor: "#fff",
-              calendarBackground: "#fff",
-              textSectionTitleColor: "#222",
-              selectedDayBackgroundColor: "#FAD961",
-              selectedDayTextColor: "#fff",
-              todayTextColor: "#FAD961",
-              dayTextColor: "#222",
-              arrowColor: "#FAD961",
-              monthTextColor: "#222",
-              indicatorColor: "#FAD961",
-              textDayFontWeight: "500",
-              textMonthFontWeight: "bold",
-              textDayHeaderFontWeight: "bold",
-              textDayFontSize: 16,
-              textMonthFontSize: 18,
-              textDayHeaderFontSize: 14,
-            }}
-            style={{ height: 90 }} // makes it compact
-          />
-        </View>
-      </>
+          {/* Calendar View */}
+          <View style={[styles.calendarContainer, { flex: 1 }]}>
+            <CalendarProvider
+              date={new Date().toISOString().split("T")[0]} // Set the initial date
+              onDateChanged={(date) => {
+                console.log("Date changed to:", date);
+                setSelectedDate(date); // Update selected date
+              }}
+              onMonthChange={(month) => {
+                console.log("Month changed to:", month);
+              }}
+            >
+              <WeekCalendar
+                current={new Date().toISOString().split("T")[0]}
+                markedDates={markedDates}
+                onDayPress={(day) => {
+                  console.log("Selected day:", day.dateString);
+                  setSelectedDate(day.dateString); // Update selected date
+                }}
+                theme={{
+                  backgroundColor: "#fff",
+                  calendarBackground: "#fff",
+                  textSectionTitleColor: "#222",
+                  selectedDayBackgroundColor: "#333",
+                  selectedDayTextColor: "#fff",
+                  todayTextColor: "#FAD961",
+                  dayTextColor: "#222",
+                  arrowColor: "#FAD961",
+                  monthTextColor: "#222",
+                  indicatorColor: "#FAD961",
+                  textDayFontWeight: "500",
+                  textMonthFontWeight: "bold",
+                  textDayHeaderFontWeight: "bold",
+                  textDayFontSize: 16, // Ensure consistent font size for day numbers
+                  textMonthFontSize: 16,
+                  textDayHeaderFontSize: 16, // Ensure consistent font size for day headers
+                }}
+                style={{
+                  height: 100, // Increase height to ensure proper spacing
+                  paddingVertical: 0, // Remove unnecessary padding
+                  justifyContent: "center", // Center-align content
+                }}
+              />
+            </CalendarProvider>
+          </View>
+        </>
+      )}
 
       {/* Tabs for New, Assigned, Complete */}
       <View style={styles.tabRow}>
@@ -217,6 +239,13 @@ const HomeScreen = () => {
         onSubmit={submitFeedback}
         loading={loading}
       />
+
+      {/* Display selected date */}
+      {selectedDate && (
+        <Text style={{ textAlign: "center", marginTop: 10 }}>
+          Selected date: {selectedDate}
+        </Text>
+      )}
     </View>
   );
 };
@@ -261,6 +290,8 @@ const styles = StyleSheet.create({
     color: "#222",
   },
   calendarContainer: {
+    flexGrow: 0, // Prevents the container from growing unnecessarily
+    minHeight: 120, // Ensures the calendar has enough space to render
     marginVertical: 10,
     borderRadius: 12,
     overflow: "hidden",
