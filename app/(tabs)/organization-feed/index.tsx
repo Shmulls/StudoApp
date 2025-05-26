@@ -20,6 +20,9 @@ import { createTask, fetchTasks, updateTask } from "../../../api";
 import MapPicker from "../../../components/MapPicker";
 import { Task } from "../../../types/task";
 
+// TODO: Replace with your actual Google Places API key or import from a secure config
+const LOCATION_API_KEY = "YOUR_GOOGLE_PLACES_API_KEY";
+
 // Define the type for newTask
 type NewTask = {
   title: string;
@@ -312,7 +315,7 @@ const Organization = () => {
                 }
               }}
               query={{
-                key: "AIzaSyAjyYxXChjy1vRsJqanVMJxjieY1cOCHLA",
+                key: process.env.EXPO_PUBLIC_LOCATION_API_KEY, // Use the key from your .env file
                 language: "en",
               }}
               styles={{
