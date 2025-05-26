@@ -141,7 +141,7 @@ const HomeScreen = () => {
           <Text
             style={[styles.tabText, tab === "complete" && styles.tabTextActive]}
           >
-            Completed
+            Complete
           </Text>
         </TouchableOpacity>
       </View>

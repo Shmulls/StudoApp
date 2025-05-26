@@ -11,21 +11,32 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { fetchTasks, updateTask } from "../../../api";
+import { createTask, fetchTasks, updateTask } from "../../../api";
+import MapPicker from "../../../components/MapPicker"; // adjust path if needed
 import { Task } from "../../../types/task";
 
 const Organization = () => {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser(); // get isLoaded
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [addTaskVisible, setAddTaskVisible] = useState(false);
+  const [newTask, setNewTask] = useState({
+    title: "",
+    description: "",
+    location: null,
+    time: "",
+    signedUp: false,
+  });
+  const [creating, setCreating] = useState(false);
   const closedTasksRef = useRef<LottieView>(null);
   const openTasksRef = useRef<LottieView>(null);
 
   // Check if the user has the correct role
   useEffect(() => {
+    if (!isLoaded) return; // Wait until Clerk user is loaded
     if (user?.unsafeMetadata?.role !== "organization") {
       router.push("/auth/not-authorized"); // Redirect unauthorized users
     }
-  }, [user]);
+  }, [user, isLoaded]);
 
   // Fetch tasks from the backend
   useEffect(() => {
@@ -75,6 +86,42 @@ const Organization = () => {
     }
   };
 
+  const handleCreateTask = async () => {
+    if (
+      !newTask.title ||
+      !newTask.description ||
+      !newTask.location ||
+      !newTask.time
+    ) {
+      alert("Please fill all fields and select a location.");
+      return;
+    }
+    setCreating(true);
+    try {
+      const { data } = await createTask(newTask);
+      setTasks((prev) => [data, ...prev]);
+      setAddTaskVisible(false);
+      setNewTask({
+        title: "",
+        description: "",
+        location: null,
+        time: "",
+        signedUp: false,
+      });
+    } catch (e) {
+      alert("Failed to create task.");
+    }
+    setCreating(false);
+  };
+
+  if (!isLoaded) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Text>✅ You are in the Organization Feed</Text>
@@ -99,6 +146,15 @@ const Organization = () => {
               name="settings-outline"
               size={30}
               color="#333"
+              style={styles.icon}
+            />
+          </TouchableOpacity>
+          {/* Add Task Icon */}
+          <TouchableOpacity onPress={() => setAddTaskVisible(true)}>
+            <Ionicons
+              name="add-circle"
+              size={36}
+              color="#FF9800"
               style={styles.icon}
             />
           </TouchableOpacity>
@@ -144,7 +200,13 @@ const Organization = () => {
               <Text style={styles.taskTitle}>{item.title}</Text>
               <Text style={styles.taskDescription}>{item.description}</Text>
               <Text style={styles.taskDetails}>
-                <Text style={styles.bold}>📍 {item.location}</Text>{" "}
+                <Text style={styles.bold}>📍 </Text>
+                <Text style={styles.bold}>
+                  {typeof item.location === "object" &&
+                  item.location.coordinates
+                    ? `${item.location.coordinates[1]}, ${item.location.coordinates[0]}`
+                    : String(item.location)}
+                </Text>{" "}
                 <Text style={styles.bold}>⏰ {item.time}</Text>
               </Text>
             </View>
@@ -162,6 +224,56 @@ const Organization = () => {
           </View>
         )}
       />
+
+      {/* Add Task Modal */}
+      {addTaskVisible && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Create New Task</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Task Title"
+              value={newTask.title}
+              onChangeText={(text) => setNewTask({ ...newTask, title: text })}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Task Description"
+              value={newTask.description}
+              onChangeText={(text) =>
+                setNewTask({ ...newTask, description: text })
+              }
+            />
+            <MapPicker
+              location={newTask.location}
+              onLocationSelect={(location) =>
+                setNewTask({ ...newTask, location })
+              }
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Time (e.g., 2 hours)"
+              value={newTask.time}
+              onChangeText={(text) => setNewTask({ ...newTask, time: text })}
+            />
+            <TouchableOpacity
+              style={styles.createTaskButton}
+              onPress={handleCreateTask}
+              disabled={creating}
+            >
+              <Text style={styles.createTaskButtonText}>
+                {creating ? "Creating..." : "Create Task"}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setAddTaskVisible(false)}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -310,5 +422,57 @@ const styles = StyleSheet.create({
   lottieIcon: {
     width: 50,
     height: 50,
+  },
+  modalOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContainer: {
+    width: "80%",
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    padding: 20,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 15,
+  },
+  input: {
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 15,
+    fontSize: 16,
+  },
+  createTaskButton: {
+    backgroundColor: "#FF9800",
+    borderRadius: 5,
+    padding: 10,
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  createTaskButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  closeButton: {
+    backgroundColor: "#ccc",
+    borderRadius: 5,
+    padding: 10,
+    alignItems: "center",
+  },
+  closeButtonText: {
+    color: "#333",
+    fontWeight: "bold",
   },
 });
