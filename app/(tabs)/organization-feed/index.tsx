@@ -17,10 +17,10 @@ import "react-native-get-random-values";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { createTask, fetchTasks, updateTask } from "../../../api";
+import ChartStats from "../../../components/CharStats";
 import MapPicker from "../../../components/MapPicker";
 import { Task } from "../../../types/task";
 
-// TODO: Replace with your actual Google Places API key or import from a secure config
 const LOCATION_API_KEY = "YOUR_GOOGLE_PLACES_API_KEY";
 
 // Define the type for newTask
@@ -47,6 +47,10 @@ const Organization = () => {
   });
   const [creating, setCreating] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [orgTab, setOrgTab] = useState<"pending" | "completed" | "statistics">(
+    "pending"
+  );
+  const [tab, setTab] = useState<"year" | "month">("year");
   const closedTasksRef = useRef<LottieView>(null);
   const openTasksRef = useRef<LottieView>(null);
 
@@ -135,6 +139,27 @@ const Organization = () => {
     setCreating(false);
   };
 
+  const openCount = tasks.filter((t) => !t.completed).length;
+  const closedCount = tasks.filter((t) => t.completed).length;
+  const returnCount = 0; // Replace with your logic
+  const total = openCount + closedCount + returnCount;
+  const percent = "+12%"; // Replace with your logic
+  const chartLabels = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  const chartData = [5, 8, 6, 10, 12, 7, 9, 11, 8, 10, 7, 12]; // Replace with your real data
+
   if (!isLoaded) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -181,72 +206,187 @@ const Organization = () => {
           </TouchableOpacity>
         </View>
       </View>
-
-      {/* Statistics Bar */}
-      <View style={styles.statisticsBar}>
-        <View style={styles.statisticsItem}>
-          <LottieView
-            ref={closedTasksRef}
-            source={require("../../../assets/images/closed-tasks.json")} // Path to your Lottie JSON file
-            autoPlay
-            loop={false}
-            style={styles.lottieIcon}
-          />
-          <Text style={styles.statisticsLabel}>Closed Tasks</Text>
-          <Text style={styles.statisticsValue}>2</Text>
-        </View>
-        <View style={styles.statisticsItem}>
-          <LottieView
-            ref={openTasksRef}
-            source={require("../../../assets/images/opened-tasks.json")} // Path to your Lottie JSON file
-            autoPlay
-            loop={false}
-            style={styles.lottieIcon}
-          />
-          <Text style={styles.statisticsLabel}>Open Tasks</Text>
-          <Text style={styles.statisticsValue}>{tasks.length}</Text>
-        </View>
-      </View>
+      {/* <ChartStats
+        open={openCount}
+        closed={closedCount}
+        returned={returnCount}
+        total={total}
+        percent={percent}
+        chartData={chartData}
+        tab="year"
+        onTab={(tab) => {
+          // Handle tab switch (year/month) and update chartData accordingly
+        }}
+      /> */}
 
       {/* Task Section */}
-      <Text style={styles.tasksTitle}>
-        Volunteers related to my organization
-      </Text>
-      <FlatList
-        data={tasks}
-        keyExtractor={(item) => item._id}
-        renderItem={({ item }) => (
-          <View style={styles.taskCard}>
-            <View style={styles.taskInfo}>
-              <Text style={styles.taskTitle}>{item.title}</Text>
-              <Text style={styles.taskDescription}>{item.description}</Text>
-              <Text style={styles.taskDetails}>
-                <Text style={styles.bold}>
-                  📍 {item.locationLabel || "No location selected"}
-                </Text>
-                {"\n"}
-                <Text style={styles.bold}>
-                  ⏰{" "}
-                  {item.time
-                    ? new Date(item.time).toLocaleString()
-                    : "No time set"}
-                </Text>
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-around",
+          marginVertical: 14,
+          backgroundColor: "#fff",
+          borderRadius: 8,
+          padding: 4,
+          elevation: 1,
+        }}
+      >
+        <TouchableOpacity
+          onPress={() => setOrgTab("pending")}
+          style={[styles.tab, orgTab === "pending" && styles.tabActive]}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              orgTab === "pending" && styles.tabTextActive,
+            ]}
+          >
+            Pending
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setOrgTab("completed")}
+          style={[styles.tab, orgTab === "completed" && styles.tabActive]}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              orgTab === "completed" && styles.tabTextActive,
+            ]}
+          >
+            Completed
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setOrgTab("statistics")}
+          style={[styles.tab, orgTab === "statistics" && styles.tabActive]}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              orgTab === "statistics" && styles.tabTextActive,
+            ]}
+          >
+            Statistics
+          </Text>
+        </TouchableOpacity>
+      </View>
+      {orgTab === "pending" && (
+        <>
+          <Text style={styles.tasksTitle}>Pending Tasks</Text>
+          <FlatList
+            data={tasks.filter((t) => !t.completed)}
+            keyExtractor={(item) => item._id}
+            renderItem={({ item }) => (
+              <View style={styles.taskCard}>
+                <View style={styles.taskInfo}>
+                  <Text style={styles.taskTitle}>{item.title}</Text>
+                  <Text style={styles.taskDescription}>{item.description}</Text>
+                  <Text style={styles.taskDetails}>
+                    <Text style={styles.bold}>
+                      📍 {item.locationLabel || "No location selected"}
+                    </Text>
+                    {"\n"}
+                    <Text style={styles.bold}>
+                      ⏰{" "}
+                      {item.time
+                        ? new Date(item.time).toLocaleString()
+                        : "No time set"}
+                    </Text>
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[
+                    styles.taskButton,
+                    item.signedUp && styles.taskButtonCompleted,
+                  ]}
+                  onPress={() => handleSignUp(item._id)}
+                >
+                  <Text style={styles.taskButtonText}>
+                    {item.signedUp ? "Completed" : "Pending"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            ListEmptyComponent={
+              <Text
+                style={{
+                  textAlign: "center",
+                  color: "#888",
+                  marginTop: 20,
+                }}
+              >
+                No pending tasks.
               </Text>
-            </View>
-            <TouchableOpacity
-              style={[
-                styles.taskButton,
-                item.signedUp && styles.taskButtonCompleted,
-              ]}
-              onPress={() => handleSignUp(item._id)}
-            >
-              <Text style={styles.taskButtonText}>
-                {item.signedUp ? "Completed" : "Pending"}
+            }
+          />
+        </>
+      )}
+
+      {orgTab === "completed" && (
+        <>
+          <Text style={styles.tasksTitle}>Completed Tasks</Text>
+          <FlatList
+            data={tasks.filter((t) => t.completed)}
+            keyExtractor={(item) => item._id}
+            renderItem={({ item }) => (
+              <View style={styles.taskCard}>
+                <View style={styles.taskInfo}>
+                  <Text style={styles.taskTitle}>{item.title}</Text>
+                  <Text style={styles.taskDescription}>{item.description}</Text>
+                  <Text style={styles.taskDetails}>
+                    <Text style={styles.bold}>
+                      📍 {item.locationLabel || "No location selected"}
+                    </Text>
+                    {"\n"}
+                    <Text style={styles.bold}>
+                      ⏰{" "}
+                      {item.time
+                        ? new Date(item.time).toLocaleString()
+                        : "No time set"}
+                    </Text>
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[
+                    styles.taskButton,
+                    item.signedUp && styles.taskButtonCompleted,
+                  ]}
+                  onPress={() => handleSignUp(item._id)}
+                >
+                  <Text style={styles.taskButtonText}>
+                    {item.signedUp ? "Completed" : "Pending"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            ListEmptyComponent={
+              <Text
+                style={{
+                  textAlign: "center",
+                  color: "#888",
+                  marginTop: 20,
+                }}
+              >
+                No completed tasks.
               </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      />
+            }
+          />
+        </>
+      )}
+
+      {orgTab === "statistics" && (
+        <ChartStats
+          open={openCount}
+          closed={closedCount}
+          total={total}
+          percent={percent}
+          chartData={chartData}
+          chartLabels={chartLabels}
+          tab={tab}
+          onTab={setTab}
+        />
+      )}
 
       {/* Add Task Modal */}
       <Modal
@@ -575,6 +715,23 @@ const styles = StyleSheet.create({
   },
   closeButtonText: {
     color: "#333",
+    fontWeight: "bold",
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  tabActive: {
+    backgroundColor: "#FF9800",
+    borderRadius: 8,
+  },
+  tabText: {
+    fontSize: 16,
+    color: "#333",
+  },
+  tabTextActive: {
+    color: "#fff",
     fontWeight: "bold",
   },
 });
