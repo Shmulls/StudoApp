@@ -1,15 +1,30 @@
-import React, { useState } from "react";
-import { View, StyleSheet, Dimensions } from "react-native";
-import MapView, { Marker, MapPressEvent } from "react-native-maps";
+import React, { useEffect, useState } from "react";
+import { Dimensions, StyleSheet, View } from "react-native";
+import MapView, { MapPressEvent, Marker } from "react-native-maps";
 
-const { width, height } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
 
-export default function MapPicker({ onLocationSelected }) {
-  const [marker, setMarker] = useState(null);
+type MapPickerProps = {
+  onLocationSelected: (location: {
+    type: "Point";
+    coordinates: [number, number];
+  }) => void;
+  marker?: { latitude: number; longitude: number } | null;
+};
 
-  const handlePress = (e) => {
+const MapPicker: React.FC<MapPickerProps> = ({
+  onLocationSelected,
+  marker,
+}) => {
+  const [internalMarker, setInternalMarker] = useState(marker);
+
+  useEffect(() => {
+    if (marker) setInternalMarker(marker);
+  }, [marker]);
+
+  const handlePress = (e: MapPressEvent) => {
     const { latitude, longitude } = e.nativeEvent.coordinate;
-    setMarker({ latitude, longitude });
+    setInternalMarker({ latitude, longitude });
     onLocationSelected({ type: "Point", coordinates: [longitude, latitude] });
   };
 
@@ -25,11 +40,13 @@ export default function MapPicker({ onLocationSelected }) {
         }}
         onPress={handlePress}
       >
-        {marker && <Marker coordinate={marker} />}
+        {internalMarker && <Marker coordinate={internalMarker} />}
       </MapView>
     </View>
   );
-}
+};
+
+export default MapPicker;
 
 const styles = StyleSheet.create({
   container: { width: "100%", height: 220, marginBottom: 12 },

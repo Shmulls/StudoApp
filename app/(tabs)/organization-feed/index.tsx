@@ -6,27 +6,44 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   FlatList,
   Image,
+  Modal,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import "react-native-get-random-values";
+import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
+import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { createTask, fetchTasks, updateTask } from "../../../api";
-import MapPicker from "../../../components/MapPicker"; // adjust path if needed
+import MapPicker from "../../../components/MapPicker";
 import { Task } from "../../../types/task";
+
+// Define the type for newTask
+type NewTask = {
+  title: string;
+  description: string;
+  location: { type: "Point"; coordinates: [number, number] } | null;
+  locationLabel: string;
+  time: string;
+  signedUp: boolean;
+};
 
 const Organization = () => {
   const { user, isLoaded } = useUser(); // get isLoaded
   const [tasks, setTasks] = useState<Task[]>([]);
   const [addTaskVisible, setAddTaskVisible] = useState(false);
-  const [newTask, setNewTask] = useState({
+  const [newTask, setNewTask] = useState<NewTask>({
     title: "",
     description: "",
     location: null,
+    locationLabel: "",
     time: "",
     signedUp: false,
   });
   const [creating, setCreating] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const closedTasksRef = useRef<LottieView>(null);
   const openTasksRef = useRef<LottieView>(null);
 
@@ -105,6 +122,7 @@ const Organization = () => {
         title: "",
         description: "",
         location: null,
+        locationLabel: "",
         time: "",
         signedUp: false,
       });
@@ -200,14 +218,16 @@ const Organization = () => {
               <Text style={styles.taskTitle}>{item.title}</Text>
               <Text style={styles.taskDescription}>{item.description}</Text>
               <Text style={styles.taskDetails}>
-                <Text style={styles.bold}>📍 </Text>
                 <Text style={styles.bold}>
-                  {typeof item.location === "object" &&
-                  item.location.coordinates
-                    ? `${item.location.coordinates[1]}, ${item.location.coordinates[0]}`
-                    : String(item.location)}
-                </Text>{" "}
-                <Text style={styles.bold}>⏰ {item.time}</Text>
+                  📍 {item.locationLabel || "No location selected"}
+                </Text>
+                {"\n"}
+                <Text style={styles.bold}>
+                  ⏰{" "}
+                  {item.time
+                    ? new Date(item.time).toLocaleString()
+                    : "No time set"}
+                </Text>
               </Text>
             </View>
             <TouchableOpacity
@@ -226,54 +246,129 @@ const Organization = () => {
       />
 
       {/* Add Task Modal */}
-      {addTaskVisible && (
+      <Modal
+        visible={addTaskVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setAddTaskVisible(false)}
+      >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Create New Task</Text>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Add New Task</Text>
             <TextInput
               style={styles.input}
-              placeholder="Task Title"
+              placeholder="Title"
               value={newTask.title}
-              onChangeText={(text) => setNewTask({ ...newTask, title: text })}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Task Description"
-              value={newTask.description}
               onChangeText={(text) =>
-                setNewTask({ ...newTask, description: text })
+                setNewTask((t) => ({ ...t, title: text }))
               }
             />
-            <MapPicker
-              location={newTask.location}
-              onLocationSelect={(location) =>
-                setNewTask({ ...newTask, location })
+            <TextInput
+              style={[styles.input, { height: 60 }]}
+              placeholder="Description"
+              value={newTask.description}
+              multiline
+              onChangeText={(text) =>
+                setNewTask((t) => ({ ...t, description: text }))
               }
             />
             <TextInput
               style={styles.input}
-              placeholder="Time (e.g., 2 hours)"
-              value={newTask.time}
-              onChangeText={(text) => setNewTask({ ...newTask, time: text })}
+              placeholder="Location Name or Address"
+              value={newTask.locationLabel}
+              onChangeText={(text) =>
+                setNewTask((t) => ({ ...t, locationLabel: text }))
+              }
+              autoCapitalize="words"
+            />
+            <Text style={{ fontWeight: "bold", marginBottom: 6 }}>
+              Pick Location on Map:
+            </Text>
+            <MapPicker
+              onLocationSelected={(loc: any) =>
+                setNewTask((t) => ({ ...t, location: loc }))
+              }
+              marker={
+                newTask.location
+                  ? {
+                      latitude: newTask.location.coordinates[1],
+                      longitude: newTask.location.coordinates[0],
+                    }
+                  : null
+              }
+            />
+            <GooglePlacesAutocomplete
+              placeholder="Search for a location"
+              fetchDetails={true}
+              onPress={(data, details = null) => {
+                if (details && details.geometry && details.geometry.location) {
+                  const { lat, lng } = details.geometry.location;
+                  setNewTask((t) => ({
+                    ...t,
+                    locationLabel: data.description,
+                    location: { type: "Point", coordinates: [lng, lat] },
+                  }));
+                  // Optionally, you can also update the map region/marker here
+                }
+              }}
+              query={{
+                key: "AIzaSyAjyYxXChjy1vRsJqanVMJxjieY1cOCHLA",
+                language: "en",
+              }}
+              styles={{
+                textInput: styles.input,
+                container: { flex: 0, marginBottom: 10 },
+              }}
             />
             <TouchableOpacity
-              style={styles.createTaskButton}
-              onPress={handleCreateTask}
-              disabled={creating}
+              style={styles.input}
+              onPress={() => setShowDatePicker(true)}
             >
-              <Text style={styles.createTaskButtonText}>
-                {creating ? "Creating..." : "Create Task"}
+              <Text>
+                {newTask.time
+                  ? new Date(newTask.time).toLocaleString()
+                  : "Select Date & Time"}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setAddTaskVisible(false)}
+
+            <DateTimePickerModal
+              isVisible={showDatePicker}
+              mode="datetime"
+              onConfirm={(date) => {
+                setShowDatePicker(false);
+                setNewTask((t) => ({
+                  ...t,
+                  time: date.toISOString(),
+                }));
+              }}
+              onCancel={() => setShowDatePicker(false)}
+            />
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                marginTop: 16,
+              }}
             >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: "#FF9800" }]}
+                onPress={handleCreateTask}
+                disabled={creating}
+              >
+                <Text style={{ color: "#fff", fontWeight: "bold" }}>
+                  {creating ? "Creating..." : "Create"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: "#ccc" }]}
+                onPress={() => setAddTaskVisible(false)}
+              >
+                <Text style={{ color: "#222" }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-      )}
+      </Modal>
     </View>
   );
 };
@@ -339,7 +434,6 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 5,
-    elevation: 2,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -398,7 +492,6 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 5,
-    elevation: 3,
   },
   statisticsItem: {
     alignItems: "center",
@@ -424,34 +517,40 @@ const styles = StyleSheet.create({
     height: 50,
   },
   modalOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.3)",
     justifyContent: "center",
     alignItems: "center",
   },
-  modalContainer: {
-    width: "80%",
+  modalContent: {
     backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 20,
-    elevation: 5,
+    borderRadius: 18,
+    padding: 22,
+    width: "90%",
+    elevation: 8,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: "bold",
-    marginBottom: 15,
+    marginBottom: 14,
+    color: "#FF9800",
+    textAlign: "center",
   },
   input: {
-    borderColor: "#ccc",
     borderWidth: 1,
-    borderRadius: 5,
+    borderColor: "#ddd",
+    borderRadius: 8,
     padding: 10,
-    marginBottom: 15,
+    marginBottom: 10,
     fontSize: 16,
+    backgroundColor: "#fafafa",
+  },
+  modalButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginHorizontal: 4,
   },
   createTaskButton: {
     backgroundColor: "#FF9800",

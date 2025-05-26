@@ -2,11 +2,14 @@ export interface Task {
   _id: string;
   title: string;
   description: string;
-  location: string;
-  time: any;
+  location: {
+    type: "Point";
+    coordinates: [number, number];
+  } | null;
+  locationLabel?: string; // <-- Add this line
+  time: string;
   signedUp: boolean;
-  completed?: boolean; // Optional property for completed status
-  completedAt?: string; // Optional property for completion timestamp
+  completed?: boolean;
 }
 
 // // Define the Task type
