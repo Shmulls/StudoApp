@@ -144,7 +144,7 @@ const Organization = () => {
   const returnCount = 0; // Replace with your logic
   const total = openCount + closedCount + returnCount;
   const percent = "+12%"; // Replace with your logic
-  const chartLabels = [
+  const yearChartLabels = [
     "Jan",
     "Feb",
     "Mar",
@@ -158,7 +158,10 @@ const Organization = () => {
     "Nov",
     "Dec",
   ];
-  const chartData = [5, 8, 6, 10, 12, 7, 9, 11, 8, 10, 7, 12]; // Replace with your real data
+  const yearChartData = [5, 8, 6, 10, 12, 7, 9, 11, 8, 10, 7, 12]; // Replace with your real data
+
+  const monthChartLabels = ["Week 1", "Week 2", "Week 3", "Week 4"];
+  const monthChartData = [2, 4, 3, 5];
 
   if (!isLoaded) {
     return (
@@ -381,10 +384,10 @@ const Organization = () => {
           closed={closedCount}
           total={total}
           percent={percent}
-          chartData={chartData}
-          chartLabels={chartLabels}
+          chartData={tab === "year" ? yearChartData : monthChartData}
+          chartLabels={tab === "year" ? yearChartLabels : monthChartLabels}
           tab={tab}
-          onTab={setTab}
+          onTab={(tab) => setTab(tab as "year" | "month")}
         />
       )}
 

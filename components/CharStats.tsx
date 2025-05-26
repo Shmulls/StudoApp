@@ -1,178 +1,123 @@
 import React from "react";
-import { Dimensions, Text, TouchableOpacity, View } from "react-native";
-import { BarChart } from "react-native-chart-kit";
+import { StyleSheet, Text, View } from "react-native";
+import { BarChart } from "react-native-gifted-charts";
 
-const screenWidth = Dimensions.get("window").width;
-
-const chartConfig = {
-  backgroundGradientFrom: "#fff",
-  backgroundGradientTo: "#fff",
-  color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`,
-  labelColor: (opacity = 1) => `rgba(51, 51, 51, ${opacity})`,
-  barPercentage: 0.6,
-  decimalPlaces: 0,
-};
-
-type Props = {
+type ChartStatsProps = {
   open: number;
   closed: number;
   total: number;
-  percent?: string;
+  percent: string | number;
   chartData: number[];
   chartLabels: string[];
-  onTab?: (tab: "year" | "month") => void;
-  tab?: "year" | "month";
+  tab: string;
+  onTab: (tab: string) => void;
 };
 
-export default function ChartStats({
+const ChartStats: React.FC<ChartStatsProps> = ({
   open,
   closed,
   total,
-  percent = "+0%",
+  percent,
   chartData,
   chartLabels,
+  tab,
   onTab,
-  tab = "year",
-}: Props) {
-  return (
-    <View
-      style={{
-        backgroundColor: "#fff",
-        borderRadius: 18,
-        padding: 18,
-        paddingHorizontal: 24, // Add this for more space
-        marginBottom: 20,
-        elevation: 4,
-        shadowColor: "#000",
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-        overflow: "hidden",
-        alignSelf: "center",
-        width: screenWidth - 30,
-      }}
-    >
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <Text style={{ fontSize: 18, fontWeight: "bold", color: "#333" }}>
-          Tasks
-        </Text>
-        <View style={{ flexDirection: "row" }}>
-          <TouchableOpacity
-            style={{
-              backgroundColor: tab === "year" ? "#222" : "#eee",
-              borderRadius: 8,
-              paddingHorizontal: 12,
-              paddingVertical: 4,
-              marginRight: 6,
-            }}
-            onPress={() => onTab && onTab("year")}
-          >
-            <Text
-              style={{
-                color: tab === "year" ? "#fff" : "#333",
-                fontWeight: "bold",
-              }}
-            >
-              Year
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={{
-              backgroundColor: tab === "month" ? "#222" : "#eee",
-              borderRadius: 8,
-              paddingHorizontal: 12,
-              paddingVertical: 4,
-            }}
-            onPress={() => onTab && onTab("month")}
-          >
-            <Text
-              style={{
-                color: tab === "month" ? "#fff" : "#333",
-                fontWeight: "bold",
-              }}
-            >
-              Month
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-      <Text
-        style={{
-          fontSize: 36,
-          fontWeight: "bold",
-          color: "#222",
-          marginTop: 8,
-        }}
-      >
-        {total}
-      </Text>
-      <Text
-        style={{
-          color: "#4CAF50",
-          fontWeight: "bold",
-          fontSize: 16,
-          marginBottom: 4,
-        }}
-      >
-        {percent}
-      </Text>
-      <Text
-        style={{
-          color: "#888",
-          marginBottom: 8,
-          fontSize: 13,
-        }}
-      >
-        Tasks Created per {tab === "year" ? "Month" : "Day"}
-      </Text>
-      <BarChart
-        data={{
-          labels: chartLabels,
-          datasets: [{ data: chartData }],
-        }}
-        width={screenWidth - 90} // Make chart narrower
-        height={140}
-        chartConfig={chartConfig}
-        fromZero
-        withInnerLines={false}
-        showValuesOnTopOfBars={false}
-        yAxisLabel=""
-        yAxisSuffix=""
-        style={{
-          borderRadius: 16,
-          alignSelf: "center",
-          marginLeft: 15, // Center the chart in the card
-        }}
-      />
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          marginTop: 12,
-        }}
-      >
-        <View style={{ flex: 1, alignItems: "center" }}>
-          <Text style={{ fontSize: 20, fontWeight: "bold", color: "#222" }}>
-            {open}
-          </Text>
-          <Text style={{ fontSize: 14, color: "#666", marginTop: 2 }}>
-            Open
-          </Text>
-        </View>
-        <View style={{ flex: 1, alignItems: "center" }}>
-          <Text style={{ fontSize: 20, fontWeight: "bold", color: "#222" }}>
-            {closed}
-          </Text>
-          <Text style={{ fontSize: 14, color: "#666", marginTop: 2 }}>
-            Closed
-          </Text>
-        </View>
+}) => (
+  <View style={styles.card}>
+    <View style={styles.headerRow}>
+      <Text style={styles.title}>Tasks</Text>
+      <View style={styles.percentBadge}>
+        <Text style={styles.percentText}>{percent}</Text>
       </View>
     </View>
-  );
-}
+    <View style={{ marginVertical: 10, width: "90%", alignSelf: "center" }}>
+      <BarChart
+        data={chartData.map((v, i) => ({ value: v, label: chartLabels[i] }))}
+        barWidth={3}
+        barBorderRadius={9}
+        frontColor="#FF9800"
+        xAxisLabelTextStyle={{ fontSize: 10 }}
+        isAnimated
+      />
+    </View>
+    <View style={styles.statsRow}>
+      <View style={styles.statBox}>
+        <Text style={styles.statValue}>{open}</Text>
+        <Text style={styles.statLabel}>Open</Text>
+      </View>
+      <View style={styles.statBox}>
+        <Text style={styles.statValue}>{closed}</Text>
+        <Text style={styles.statLabel}>Closed</Text>
+      </View>
+      {/* Add more stats if needed */}
+    </View>
+    <View style={styles.tabRow}>
+      <Text
+        style={[styles.tab, tab === "year" && styles.tabActive]}
+        onPress={() => onTab("year")}
+      >
+        Year
+      </Text>
+      <Text
+        style={[styles.tab, tab === "month" && styles.tabActive]}
+        onPress={() => onTab("month")}
+      >
+        Month
+      </Text>
+    </View>
+  </View>
+);
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    padding: 20,
+    margin: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  title: { fontSize: 22, fontWeight: "bold", color: "#222" },
+  percentBadge: {
+    backgroundColor: "#E0F7FA",
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  percentText: { color: "#26C6DA", fontWeight: "bold" },
+  statsRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginTop: 16,
+  },
+  statBox: { alignItems: "center" },
+  statValue: { fontSize: 20, fontWeight: "bold", color: "#333" },
+  statLabel: { fontSize: 13, color: "#888" },
+  tabRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 18,
+  },
+  tab: {
+    paddingHorizontal: 18,
+    paddingVertical: 6,
+    borderRadius: 8,
+    color: "#888",
+    fontWeight: "bold",
+    marginHorizontal: 4,
+    backgroundColor: "#F5F5F5",
+  },
+  tabActive: {
+    backgroundColor: "#FF9800",
+    color: "#fff",
+  },
+});
+
+export default ChartStats;
