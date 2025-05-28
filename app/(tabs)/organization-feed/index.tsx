@@ -150,7 +150,6 @@ const Organization = () => {
     "Mar",
     "Apr",
     "May",
-    "Jun",
     "Jul",
     "Aug",
     "Sep",
@@ -173,16 +172,17 @@ const Organization = () => {
 
   return (
     <View style={styles.container}>
-      <Text>✅ You are in the Organization Feed</Text>
       {/* Header Section */}
       <View style={styles.header}>
-        <Image source={{ uri: user?.imageUrl }} style={styles.profileImage} />
+        <TouchableOpacity>
+          <Image source={{ uri: user?.imageUrl }} style={styles.profileImage} />
+        </TouchableOpacity>
         <View style={styles.headerIcons}>
           {/* Notification Icon */}
           <TouchableOpacity onPress={() => router.push("/notification")}>
             <Ionicons
               name="notifications-outline"
-              size={30}
+              size={24}
               color="#333"
               style={styles.icon}
             />
@@ -193,7 +193,7 @@ const Organization = () => {
           >
             <Ionicons
               name="settings-outline"
-              size={30}
+              size={24}
               color="#333"
               style={styles.icon}
             />
@@ -209,31 +209,13 @@ const Organization = () => {
           </TouchableOpacity>
         </View>
       </View>
-      {/* <ChartStats
-        open={openCount}
-        closed={closedCount}
-        returned={returnCount}
-        total={total}
-        percent={percent}
-        chartData={chartData}
-        tab="year"
-        onTab={(tab) => {
-          // Handle tab switch (year/month) and update chartData accordingly
-        }}
-      /> */}
-
-      {/* Task Section */}
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-around",
-          marginVertical: 14,
-          backgroundColor: "#fff",
-          borderRadius: 8,
-          padding: 4,
-          elevation: 1,
-        }}
-      >
+      {/* Welcome Section */}
+      <Text style={styles.welcomeText}>
+        Welcome Back, <Text style={styles.bold}>{user?.firstName}</Text>!{" "}
+        <Text style={{ color: "#FF9800" }}>🧡</Text>
+      </Text>
+      {/* Milestone Progress Bar */}
+      <View style={styles.tabRow}>
         <TouchableOpacity
           onPress={() => setOrgTab("pending")}
           style={[styles.tab, orgTab === "pending" && styles.tabActive]}
@@ -274,6 +256,7 @@ const Organization = () => {
           </Text>
         </TouchableOpacity>
       </View>
+
       {orgTab === "pending" && (
         <>
           <Text style={styles.tasksTitle}>Pending Tasks</Text>
@@ -531,20 +514,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 20,
+    marginBottom: 10,
   },
   profileImage: {
-    width: 45,
-    height: 45,
+    width: 60,
+    height: 60,
     borderRadius: 40,
-    borderColor: "#fff",
-    borderWidth: 2,
-    marginTop: 25,
+    marginTop: 45,
   },
   headerIcons: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 40,
+    marginTop: 60,
   },
   icon: {
     marginLeft: 20,
@@ -722,19 +703,35 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
-    paddingVertical: 10,
     alignItems: "center",
-  },
-  tabActive: {
-    backgroundColor: "#FF9800",
+    paddingVertical: 8,
     borderRadius: 8,
   },
+  tabActive: {
+    backgroundColor: "#FAD961", // Changed from #FF9800 to match home feed
+  },
   tabText: {
-    fontSize: 16,
-    color: "#333",
+    color: "#888",
+    fontWeight: "bold",
+    fontSize: 15,
   },
   tabTextActive: {
-    color: "#fff",
-    fontWeight: "bold",
+    color: "#222", // Changed from #fff to match home feed
+  },
+  welcomeText: {
+    fontSize: 18,
+    fontWeight: "500",
+    marginBottom: 10,
+    marginTop: 10,
+    color: "#222",
+  },
+  tabRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginVertical: 14,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 4,
+    elevation: 1,
   },
 });

@@ -38,6 +38,7 @@ const ChartStats: React.FC<ChartStatsProps> = ({
         frontColor="#FF9800"
         xAxisLabelTextStyle={{ fontSize: 10 }}
         isAnimated
+        xAxisLength={250}
       />
     </View>
     <View style={styles.statsRow}>
@@ -49,7 +50,6 @@ const ChartStats: React.FC<ChartStatsProps> = ({
         <Text style={styles.statValue}>{closed}</Text>
         <Text style={styles.statLabel}>Closed</Text>
       </View>
-      {/* Add more stats if needed */}
     </View>
     <View style={styles.tabRow}>
       <Text
