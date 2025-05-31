@@ -30,6 +30,11 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onSignUp, onComplete }) => (
       <Text style={styles.taskDescription}>{task.description}</Text>
       <Text style={styles.taskDetails}>
         <Text style={styles.bold}>
+          📍 {task.locationLabel || "No location selected"}
+        </Text>
+      </Text>
+      <Text style={styles.taskDetails}>
+        <Text style={styles.bold}>
           ⏰{" "}
           {new Date(task.time).toLocaleTimeString([], {
             hour: "2-digit",

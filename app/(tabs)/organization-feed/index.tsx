@@ -4,24 +4,22 @@ import { router } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Animated,
   FlatList,
   Image,
   Modal,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import "react-native-get-random-values";
-import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
-import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { createTask, fetchTasks, updateTask } from "../../../api";
+import AddTaskModal from "../../../components/AddTaskModal";
 import ChartStats from "../../../components/CharStats";
-import MapPicker from "../../../components/MapPicker";
 import { Task } from "../../../types/task";
 
-const LOCATION_API_KEY = "YOUR_GOOGLE_PLACES_API_KEY";
+// const LOCATION_API_KEY = "AIzaSyAjyYxXChjy1vRsJqanVMJxjieY1cOCHLA";
 
 // Define the type for newTask
 type NewTask = {
@@ -53,6 +51,12 @@ const Organization = () => {
   const [tab, setTab] = useState<"year" | "month">("year");
   const closedTasksRef = useRef<LottieView>(null);
   const openTasksRef = useRef<LottieView>(null);
+  const [userModalVisible, setUserModalVisible] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<{
+    name: string;
+    image: string;
+  } | null>(null);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // Check if the user has the correct role
   useEffect(() => {
@@ -161,6 +165,24 @@ const Organization = () => {
 
   const monthChartLabels = ["Week 1", "Week 2", "Week 3", "Week 4"];
   const monthChartData = [2, 4, 3, 5];
+
+  useEffect(() => {
+    // Animate pulse when a user is newly assigned
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.15,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
 
   if (!isLoaded) {
     return (
@@ -281,17 +303,68 @@ const Organization = () => {
                     </Text>
                   </Text>
                 </View>
-                <TouchableOpacity
-                  style={[
-                    styles.taskButton,
-                    item.signedUp && styles.taskButtonCompleted,
-                  ]}
-                  onPress={() => handleSignUp(item._id)}
-                >
-                  <Text style={styles.taskButtonText}>
-                    {item.signedUp ? "Completed" : "Pending"}
-                  </Text>
-                </TouchableOpacity>
+                {item.signedUp &&
+                item.assignedUserName &&
+                item.assignedUserImage ? (
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      setSelectedUser({
+                        name: item.assignedUserName,
+                        image: item.assignedUserImage,
+                      });
+                      setUserModalVisible(true);
+                    }}
+                  >
+                    <Animated.View
+                      style={[
+                        {
+                          borderWidth: 2,
+                          borderColor: item.completed
+                            ? "#4CAF50"
+                            : item.signedUp
+                            ? "#2196F3"
+                            : "#ccc",
+                          borderRadius: 24,
+                          padding: 2,
+                          alignItems: "center",
+                          justifyContent: "center",
+                          // Animation style will be added below
+                          transform: [
+                            { scale: item.justAssigned ? pulseAnim : 1 },
+                          ],
+                        },
+                      ]}
+                    >
+                      <Image
+                        source={{ uri: item.assignedUserImage }}
+                        style={{ width: 40, height: 40, borderRadius: 20 }}
+                      />
+                      {item.completed && (
+                        <View
+                          style={{
+                            position: "absolute",
+                            bottom: 0,
+                            right: 0,
+                            backgroundColor: "#4CAF50",
+                            borderRadius: 8,
+                            width: 16,
+                            height: 16,
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Ionicons name="checkmark" size={12} color="#fff" />
+                        </View>
+                      )}
+                    </Animated.View>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.pendingBadgeContainer}>
+                    <Ionicons name="time-outline" size={16} color="#FFD700" />
+                    <Text style={styles.pendingBadgeText}>Pending</Text>
+                  </View>
+                )}
               </View>
             )}
             ListEmptyComponent={
@@ -375,126 +448,75 @@ const Organization = () => {
       )}
 
       {/* Add Task Modal */}
-      <Modal
+      <AddTaskModal
         visible={addTaskVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setAddTaskVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add New Task</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Title"
-              value={newTask.title}
-              onChangeText={(text) =>
-                setNewTask((t) => ({ ...t, title: text }))
-              }
-            />
-            <TextInput
-              style={[styles.input, { height: 60 }]}
-              placeholder="Description"
-              value={newTask.description}
-              multiline
-              onChangeText={(text) =>
-                setNewTask((t) => ({ ...t, description: text }))
-              }
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Location Name or Address"
-              value={newTask.locationLabel}
-              onChangeText={(text) =>
-                setNewTask((t) => ({ ...t, locationLabel: text }))
-              }
-              autoCapitalize="words"
-            />
-            <Text style={{ fontWeight: "bold", marginBottom: 6 }}>
-              Pick Location on Map:
-            </Text>
-            <MapPicker
-              onLocationSelected={(loc: any) =>
-                setNewTask((t) => ({ ...t, location: loc }))
-              }
-              marker={
-                newTask.location
-                  ? {
-                      latitude: newTask.location.coordinates[1],
-                      longitude: newTask.location.coordinates[0],
-                    }
-                  : null
-              }
-            />
-            <GooglePlacesAutocomplete
-              placeholder="Search for a location"
-              fetchDetails={true}
-              onPress={(data, details = null) => {
-                if (details && details.geometry && details.geometry.location) {
-                  const { lat, lng } = details.geometry.location;
-                  setNewTask((t) => ({
-                    ...t,
-                    locationLabel: data.description,
-                    location: { type: "Point", coordinates: [lng, lat] },
-                  }));
-                  // Optionally, you can also update the map region/marker here
-                }
-              }}
-              query={{
-                key: process.env.EXPO_PUBLIC_LOCATION_API_KEY, // Use the key from your .env file
-                language: "en",
-              }}
-              styles={{
-                textInput: styles.input,
-                container: { flex: 0, marginBottom: 10 },
-              }}
-            />
-            <TouchableOpacity
-              style={styles.input}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Text>
-                {newTask.time
-                  ? new Date(newTask.time).toLocaleString()
-                  : "Select Date & Time"}
-              </Text>
-            </TouchableOpacity>
+        creating={creating}
+        newTask={newTask}
+        setNewTask={setNewTask}
+        onClose={() => setAddTaskVisible(false)}
+        onCreate={handleCreateTask}
+        styles={styles}
+      />
 
-            <DateTimePickerModal
-              isVisible={showDatePicker}
-              mode="datetime"
-              onConfirm={(date) => {
-                setShowDatePicker(false);
-                setNewTask((t) => ({
-                  ...t,
-                  time: date.toISOString(),
-                }));
-              }}
-              onCancel={() => setShowDatePicker(false)}
-            />
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                marginTop: 16,
-              }}
-            >
-              <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: "#FF9800" }]}
-                onPress={handleCreateTask}
-                disabled={creating}
-              >
-                <Text style={{ color: "#fff", fontWeight: "bold" }}>
-                  {creating ? "Creating..." : "Create"}
+      {/* User Detail Modal */}
+      <Modal
+        visible={userModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setUserModalVisible(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.3)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: 16,
+              padding: 24,
+              alignItems: "center",
+              minWidth: 220,
+            }}
+          >
+            {selectedUser && (
+              <>
+                <Image
+                  source={{ uri: selectedUser.image }}
+                  style={{
+                    width: 60,
+                    height: 60,
+                    borderRadius: 30,
+                    marginBottom: 12,
+                  }}
+                />
+                <Text
+                  style={{
+                    fontWeight: "bold",
+                    fontSize: 18,
+                    marginBottom: 8,
+                  }}
+                >
+                  {selectedUser.name}
                 </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: "#ccc" }]}
-                onPress={() => setAddTaskVisible(false)}
-              >
-                <Text style={{ color: "#222" }}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
+                {/* Add more user info here if available */}
+              </>
+            )}
+            <TouchableOpacity
+              style={{
+                marginTop: 16,
+                backgroundColor: "#FF9800",
+                borderRadius: 8,
+                paddingVertical: 8,
+                paddingHorizontal: 24,
+              }}
+              onPress={() => setUserModalVisible(false)}
+            >
+              <Text style={{ color: "#fff", fontWeight: "bold" }}>Close</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -733,5 +755,19 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 4,
     elevation: 1,
+  },
+  pendingBadgeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff3cd",
+    borderRadius: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    marginTop: 8,
+  },
+  pendingBadgeText: {
+    fontSize: 12,
+    color: "#856404",
+    marginLeft: 4,
   },
 });

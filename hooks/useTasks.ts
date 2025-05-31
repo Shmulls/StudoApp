@@ -25,12 +25,19 @@ export function useTasks(user: any) {
     const task = tasks.find((t) => t._id === taskId);
     if (!task) return;
 
-    const updatedTask = { ...task, signedUp: !task.signedUp };
+    const isSigningUp = !task.signedUp;
+    const updatedTask = {
+      ...task,
+      signedUp: isSigningUp,
+      assignedUserId: isSigningUp ? user?.id : null,
+      assignedUserName: isSigningUp ? user?.fullName || user?.name : null,
+      assignedUserImage: isSigningUp ? user?.imageUrl : null,
+    };
     try {
       setLoading(true);
       await Promise.all([
         updateTask(taskId, updatedTask),
-        !task.signedUp && addTaskToCalendar(task),
+        isSigningUp && addTaskToCalendar(task),
       ]);
       setTasks((prevTasks) =>
         prevTasks.map((task) => (task._id === taskId ? updatedTask : task))
