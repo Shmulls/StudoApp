@@ -5,6 +5,7 @@ import LottieView from "lottie-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
+  Dimensions,
   FlatList,
   Image,
   Modal,
@@ -14,7 +15,7 @@ import {
   View,
 } from "react-native";
 import "react-native-get-random-values";
-import { createTask, fetchTasks, updateTask } from "../../../api";
+import { createTask, deleteTask, fetchTasks, updateTask } from "../../../api";
 import AddTaskModal from "../../../components/AddTaskModal";
 import ChartStats from "../../../components/CharStats";
 import { Task } from "../../../types/task";
@@ -57,6 +58,20 @@ const Organization = () => {
     image: string;
   } | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [popoverVisible, setPopoverVisible] = useState(false);
+  const [popoverTaskId, setPopoverTaskId] = useState<string | null>(null);
+  const [popoverPosition, setPopoverPosition] = useState<{
+    x: number;
+    y: number;
+  }>({ x: 0, y: 0 });
+
+  const POPUP_WIDTH = 200;
+  const screenWidth = Dimensions.get("window").width;
+  const popoverLeft = Math.min(
+    Math.max(popoverPosition.x - POPUP_WIDTH / 2, 8),
+    screenWidth - POPUP_WIDTH - 8
+  );
 
   // Check if the user has the correct role
   useEffect(() => {
@@ -184,6 +199,17 @@ const Organization = () => {
     ).start();
   }, []);
 
+  const handleDeleteTask = async (taskId: string | null) => {
+    if (!taskId) return;
+    try {
+      await deleteTask(taskId);
+      setTasks((prev) => prev.filter((task) => task._id !== taskId));
+      setPopoverVisible(false);
+    } catch (error) {
+      alert("Failed to delete task.");
+    }
+  };
+
   if (!isLoaded) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -225,7 +251,7 @@ const Organization = () => {
             <Ionicons
               name="add-circle"
               size={36}
-              color="#FF9800"
+              color="#525252"
               style={styles.icon}
             />
           </TouchableOpacity>
@@ -248,6 +274,7 @@ const Organization = () => {
               orgTab === "pending" && styles.tabTextActive,
             ]}
           >
+            {/* Change or remove "Pending" below as you wish */}
             Pending
           </Text>
         </TouchableOpacity>
@@ -286,8 +313,15 @@ const Organization = () => {
             data={tasks.filter((t) => !t.completed)}
             keyExtractor={(item) => item._id}
             renderItem={({ item }) => (
-              <View style={styles.taskCard}>
-                <Text style={styles.groupLabel}>Group 1</Text>
+              <TouchableOpacity
+                activeOpacity={0.95}
+                onPressIn={() => setActiveTaskId(item._id)}
+                onPressOut={() => setActiveTaskId(null)}
+                style={[
+                  styles.taskCard,
+                  activeTaskId === item._id && styles.taskCardActive,
+                ]}
+              >
                 <View style={styles.cardHeaderRow}>
                   <View style={styles.dot} />
                   <Text style={styles.taskTitle} numberOfLines={2}>
@@ -305,9 +339,13 @@ const Organization = () => {
                 </View>
                 <Text style={styles.taskDescription}>{item.description}</Text>
                 <View style={styles.cardFooterRow}>
-                  <View style={styles.locationRow}>
+                  <View style={styles.locationRowWrapper}>
                     <Ionicons name="location-outline" size={16} color="#333" />
-                    <Text style={styles.locationText}>
+                    <Text
+                      style={styles.locationText}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
                       {item.locationLabel || "No location selected"}
                     </Text>
                   </View>
@@ -329,16 +367,15 @@ const Organization = () => {
                         />
                       </TouchableOpacity>
                     )}
-                    <TouchableOpacity style={styles.moreButton}>
-                      <Ionicons
-                        name="ellipsis-horizontal"
-                        size={20}
-                        color="#222"
-                      />
+                    <TouchableOpacity
+                      style={styles.moreButton}
+                      onPress={() => handleDeleteTask(item._id)}
+                    >
+                      <Ionicons name="trash-outline" size={20} color="#fff" />
                     </TouchableOpacity>
                   </View>
                 </View>
-              </View>
+              </TouchableOpacity>
             )}
             ListEmptyComponent={
               <Text
@@ -502,7 +539,7 @@ export default Organization;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAD961",
+    backgroundColor: "#F9CE60",
     padding: 20,
   },
   header: {
@@ -512,8 +549,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   profileImage: {
-    width: 60,
-    height: 60,
+    width: 50,
+    height: 50,
     borderRadius: 40,
     marginTop: 45,
   },
@@ -548,20 +585,24 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   taskCard: {
-    borderWidth: 1,
-    borderColor: "#000", // Add black border
+    // borderWidth: 1,
+    // borderColor: "#525252", // Add black border
     padding: 18,
     marginBottom: 18,
-    backgroundColor: "#FAD961",
+    backgroundColor: "#F9CE60",
     minHeight: 120,
     borderRadius: 16,
     // Shadow for iOS
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
+    // shadowColor: "#000",
+    // shadowOffset: { width: 0, height: 4 },
+    // shadowOpacity: 0.18,
+    // shadowRadius: 8,
     // Shadow for Android
-    elevation: 6,
+    elevation: 2,
+  },
+  taskCardActive: {
+    borderColor: "#000",
+    borderWidth: 2,
   },
   taskInfo: {
     flex: 1,
@@ -687,7 +728,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
   },
   createTaskButton: {
-    backgroundColor: "#FF9800",
+    backgroundColor: "#525252",
     borderRadius: 5,
     padding: 10,
     alignItems: "center",
@@ -715,7 +756,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   tabActive: {
-    backgroundColor: "#FAD961", // Changed from #FF9800 to match home feed
+    backgroundColor: "#525252", // Changed from #FF9800 to match home feed
   },
   tabText: {
     color: "#888",
@@ -723,7 +764,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   tabTextActive: {
-    color: "#222", // Changed from #fff to match home feed
+    color: "#fff", // Changed from #fff to match home feed
   },
   welcomeText: {
     fontSize: 18,
@@ -774,7 +815,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#F9E79F",
+    backgroundColor: "#525252",
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 8,
@@ -803,6 +844,7 @@ const styles = StyleSheet.create({
   avatarRowBottom: {
     flexDirection: "row",
     alignItems: "center",
+    flexShrink: 0,
     marginLeft: 8,
   },
   avatarName: {
@@ -820,7 +862,7 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: "#222",
+    backgroundColor: "#525252",
     marginRight: 8,
     marginTop: 2,
   },
@@ -828,10 +870,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
+  locationRowWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    minWidth: 0, // allows text truncation
+    marginRight: 8,
+  },
   locationText: {
     fontSize: 13,
     color: "#222",
     marginLeft: 4,
+    flex: 1,
+    minWidth: 0,
   },
   taskTime: {
     fontSize: 16,

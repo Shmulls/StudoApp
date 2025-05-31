@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F5F5F5",
   },
   tabActive: {
-    backgroundColor: "#FF9800",
+    backgroundColor: "#525252",
     color: "#fff",
   },
 });
