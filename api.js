@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const API = axios.create({ baseURL: "http://10.0.2.2:5001/api" });
+// Change this to your server's public IP:
+const API = axios.create({ baseURL: "http://128.140.74.218:5001/api" });
 
 export const fetchTasks = () => API.get("/tasks");
 export const createTask = (task) => API.post("/tasks", task);
