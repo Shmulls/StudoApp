@@ -287,84 +287,57 @@ const Organization = () => {
             keyExtractor={(item) => item._id}
             renderItem={({ item }) => (
               <View style={styles.taskCard}>
-                <View style={styles.taskInfo}>
-                  <Text style={styles.taskTitle}>{item.title}</Text>
-                  <Text style={styles.taskDescription}>{item.description}</Text>
-                  <Text style={styles.taskDetails}>
-                    <Text style={styles.bold}>
-                      📍 {item.locationLabel || "No location selected"}
-                    </Text>
-                    {"\n"}
-                    <Text style={styles.bold}>
-                      ⏰{" "}
-                      {item.time
-                        ? new Date(item.time).toLocaleString()
-                        : "No time set"}
-                    </Text>
+                <Text style={styles.groupLabel}>Group 1</Text>
+                <View style={styles.cardHeaderRow}>
+                  <View style={styles.dot} />
+                  <Text style={styles.taskTitle} numberOfLines={2}>
+                    {item.title}
+                  </Text>
+                  <View style={{ flex: 1 }} />
+                  <Text style={styles.taskTime}>
+                    {item.time
+                      ? new Date(item.time).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "No time set"}
                   </Text>
                 </View>
-                {item.signedUp &&
-                item.assignedUserName &&
-                item.assignedUserImage ? (
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => {
-                      setSelectedUser({
-                        name: item.assignedUserName,
-                        image: item.assignedUserImage,
-                      });
-                      setUserModalVisible(true);
-                    }}
-                  >
-                    <Animated.View
-                      style={[
-                        {
-                          borderWidth: 2,
-                          borderColor: item.completed
-                            ? "#4CAF50"
-                            : item.signedUp
-                            ? "#2196F3"
-                            : "#ccc",
-                          borderRadius: 24,
-                          padding: 2,
-                          alignItems: "center",
-                          justifyContent: "center",
-                          // Animation style will be added below
-                          transform: [
-                            { scale: item.justAssigned ? pulseAnim : 1 },
-                          ],
-                        },
-                      ]}
-                    >
-                      <Image
-                        source={{ uri: item.assignedUserImage }}
-                        style={{ width: 40, height: 40, borderRadius: 20 }}
-                      />
-                      {item.completed && (
-                        <View
-                          style={{
-                            position: "absolute",
-                            bottom: 0,
-                            right: 0,
-                            backgroundColor: "#4CAF50",
-                            borderRadius: 8,
-                            width: 16,
-                            height: 16,
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          <Ionicons name="checkmark" size={12} color="#fff" />
-                        </View>
-                      )}
-                    </Animated.View>
-                  </TouchableOpacity>
-                ) : (
-                  <View style={styles.pendingBadgeContainer}>
-                    <Ionicons name="time-outline" size={16} color="#FFD700" />
-                    <Text style={styles.pendingBadgeText}>Pending</Text>
+                <Text style={styles.taskDescription}>{item.description}</Text>
+                <View style={styles.cardFooterRow}>
+                  <View style={styles.locationRow}>
+                    <Ionicons name="location-outline" size={16} color="#333" />
+                    <Text style={styles.locationText}>
+                      {item.locationLabel || "No location selected"}
+                    </Text>
                   </View>
-                )}
+                  <View style={styles.avatarRowBottom}>
+                    {item.assignedUserImage && (
+                      <TouchableOpacity
+                        style={styles.avatarWrapper}
+                        onPress={() => {
+                          setSelectedUser({
+                            name: item.assignedUserName ?? "",
+                            image: item.assignedUserImage ?? "",
+                          });
+                          setUserModalVisible(true);
+                        }}
+                      >
+                        <Image
+                          source={{ uri: item.assignedUserImage }}
+                          style={styles.avatar}
+                        />
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity style={styles.moreButton}>
+                      <Ionicons
+                        name="ellipsis-horizontal"
+                        size={20}
+                        color="#222"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
             )}
             ListEmptyComponent={
@@ -575,31 +548,43 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   taskCard: {
-    borderColor: "#000",
     borderWidth: 1,
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 15,
+    borderColor: "#000", // Add black border
+    padding: 18,
+    marginBottom: 18,
+    backgroundColor: "#FAD961",
+    minHeight: 120,
+    borderRadius: 16,
+    // Shadow for iOS
     shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    // Shadow for Android
+    elevation: 6,
   },
   taskInfo: {
     flex: 1,
-    marginRight: 10,
+    minWidth: 0,
+    justifyContent: "center",
+  },
+  taskRightColumn: {
+    width: 80,
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    flexDirection: "column",
   },
   taskTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "bold",
-    marginBottom: 5,
+    color: "#222",
+    flexShrink: 1,
   },
   taskDescription: {
     fontSize: 14,
-    color: "#666",
-    marginBottom: 5,
+    color: "#444",
+    marginVertical: 6,
+    marginLeft: 20,
   },
   checkedICON: {
     width: 30,
@@ -763,11 +748,107 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 4,
     paddingHorizontal: 8,
-    marginTop: 8,
+    marginBottom: 8,
+    alignSelf: "flex-end",
   },
   pendingBadgeText: {
     fontSize: 12,
     color: "#856404",
     marginLeft: 4,
+  },
+  avatarWrapper: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: "#fff",
+    overflow: "hidden",
+    backgroundColor: "#eee",
+  },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  moreButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#F9E79F",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 8,
+    elevation: 1,
+  },
+  avatarBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: 5,
+    backgroundColor: "#4CAF50",
+    borderRadius: 8,
+    width: 16,
+    height: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarTouchable: {
+    alignSelf: "flex-end",
+    marginTop: "auto", // Push to bottom
+  },
+  avatarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+  },
+  avatarRowBottom: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: 8,
+  },
+  avatarName: {
+    fontSize: 12,
+    color: "#333",
+    fontWeight: "bold",
+  },
+  groupLabel: {
+    color: "#B39DDB",
+    fontSize: 13,
+    marginBottom: 2,
+    marginLeft: 2,
+  },
+  dot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#222",
+    marginRight: 8,
+    marginTop: 2,
+  },
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  locationText: {
+    fontSize: 13,
+    color: "#222",
+    marginLeft: 4,
+  },
+  taskTime: {
+    fontSize: 16,
+    color: "#222",
+    fontWeight: "500",
+    marginLeft: 10,
+    marginTop: 2,
+  },
+  cardHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 2,
+  },
+  cardFooterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 16,
   },
 });
