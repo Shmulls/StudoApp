@@ -1,11 +1,29 @@
-import { useAuth } from "@clerk/clerk-expo";
-import { Redirect, Stack } from "expo-router";
+import { useAuth, useUser } from "@clerk/clerk-expo";
+import { Redirect, Stack, useRouter } from "expo-router";
+import { useEffect } from "react";
 
 export default function TabLayout() {
   const { isSignedIn } = useAuth();
+  const { user, isLoaded } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      if (user?.unsafeMetadata?.role === "organization") {
+        router.replace("/organization-feed");
+      } else {
+        router.replace("/home");
+      }
+    }
+  }, [isLoaded, isSignedIn, user, router]);
 
   if (!isSignedIn) {
     return <Redirect href="/auth" />;
+  }
+
+  // Optionally, show a loading indicator while user is loading
+  if (!isLoaded) {
+    return null;
   }
 
   return (
