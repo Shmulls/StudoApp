@@ -10,9 +10,15 @@ export const updateTask = (id, updatedTask) =>
 export const deleteTask = (id) => API.delete(`/tasks/${id}`);
 export const fetchCompletedTasks = () => API.get("/completed-tasks");
 
-// Fetch notifications for a user
-export const fetchNotifications = (userId) => {
+// Fix notification functions to use axios consistently
+export const fetchNotifications = async (userId) => {
+  if (!userId) throw new Error("User ID is required");
   return API.get(`/notifications/${userId}`);
+};
+
+// Fix function to mark notification as read
+export const markNotificationAsRead = async (notificationId) => {
+  return API.patch(`/notifications/${notificationId}`, { status: "read" });
 };
 
 // Create a notification (if needed for testing)

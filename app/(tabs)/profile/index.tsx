@@ -4,15 +4,16 @@ import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-  Alert, // Add this
+  Alert,
   Image,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { goHome } from "../../../utils/navigation"; // adjust path as needed
+import { goHome } from "../../../utils/navigation";
 
 const ProfileScreen = () => {
   const { user } = useUser();
@@ -119,9 +120,32 @@ const ProfileScreen = () => {
     }
   };
 
-  const renderField = (label: string, field: keyof typeof fieldValues) => (
-    <View style={styles.fieldRow}>
-      <Text style={styles.fieldLabel}>{label}</Text>
+  const renderField = (
+    label: string,
+    field: keyof typeof fieldValues,
+    icon: string
+  ) => (
+    <View style={styles.fieldCard}>
+      <View style={styles.fieldHeader}>
+        <View style={styles.fieldLabelContainer}>
+          <View style={styles.fieldIconContainer}>
+            <Ionicons name={icon as any} size={20} color="#FF9800" />
+          </View>
+          <Text style={styles.fieldLabel}>{label}</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() =>
+            editingField === field ? handleSave(field) : setEditingField(field)
+          }
+        >
+          <Ionicons
+            name={editingField === field ? "checkmark" : "pencil"}
+            size={18}
+            color={editingField === field ? "#4CAF50" : "#666"}
+          />
+        </TouchableOpacity>
+      </View>
       {editingField === field ? (
         <TextInput
           style={styles.fieldInput}
@@ -132,35 +156,39 @@ const ProfileScreen = () => {
           keyboardType={
             field === "age" || field === "yearOfStudy" ? "numeric" : "default"
           }
+          placeholder={`Enter ${label.toLowerCase()}`}
         />
       ) : (
         <Text style={styles.fieldValue}>
           {String(fieldValues[field] || "Not provided")}
         </Text>
       )}
-      <TouchableOpacity
-        onPress={() =>
-          editingField === field ? handleSave(field) : setEditingField(field)
-        }
-      >
-        <Ionicons
-          name={editingField === field ? "checkmark" : "pencil"}
-          size={20}
-          color="#333"
-          style={styles.icon}
-        />
-      </TouchableOpacity>
     </View>
   );
 
   const renderPasswordField = () => (
-    <View style={styles.passwordRow}>
-      <Text style={styles.fieldLabel}>Password Change</Text>
+    <View style={styles.fieldCard}>
+      <View style={styles.fieldHeader}>
+        <View style={styles.fieldLabelContainer}>
+          <View style={styles.fieldIconContainer}>
+            <Ionicons name="lock-closed" size={20} color="#FF9800" />
+          </View>
+          <Text style={styles.fieldLabel}>Password</Text>
+        </View>
+        {editingField !== "password" && (
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => setEditingField("password")}
+          >
+            <Ionicons name="pencil" size={18} color="#666" />
+          </TouchableOpacity>
+        )}
+      </View>
+
       {editingField === "password" ? (
-        <View style={styles.passwordBox}>
-          {/* Current Password */}
+        <View style={styles.passwordContainer}>
           <TextInput
-            style={styles.passwordInput}
+            style={styles.fieldInput}
             placeholder="Current password"
             secureTextEntry
             value={passwordFields.currentPassword}
@@ -168,48 +196,43 @@ const ProfileScreen = () => {
               setPasswordFields((prev) => ({ ...prev, currentPassword: text }))
             }
           />
-
-          {/* Enter New Password */}
           <TextInput
-            style={styles.passwordInput}
-            placeholder="Enter new password"
+            style={styles.fieldInput}
+            placeholder="New password"
             secureTextEntry
             value={passwordFields.newPassword}
             onChangeText={(text) =>
               setPasswordFields((prev) => ({ ...prev, newPassword: text }))
             }
           />
-
-          {/* Re-enter New Password */}
           <TextInput
-            style={styles.passwordInput}
-            placeholder="Re-enter new password"
+            style={styles.fieldInput}
+            placeholder="Confirm new password"
             secureTextEntry
             value={passwordFields.confirmPassword}
             onChangeText={(text) =>
               setPasswordFields((prev) => ({ ...prev, confirmPassword: text }))
             }
           />
-
-          {/* Error Message */}
           {passwordError && (
             <Text style={styles.errorText}>{passwordError}</Text>
           )}
-
-          {/* Action Buttons */}
-          <View style={styles.actionButtons}>
-            {/* Submit Icon */}
-            <TouchableOpacity onPress={handlePasswordChange}>
-              <Ionicons
-                name="checkmark"
-                size={24}
-                color="#4CAF50"
-                style={styles.icon}
-              />
-            </TouchableOpacity>
-
-            {/* Cancel Icon */}
+          <View style={styles.passwordActions}>
             <TouchableOpacity
+              style={[
+                styles.passwordActionButton,
+                { backgroundColor: "#4CAF50" },
+              ]}
+              onPress={handlePasswordChange}
+            >
+              <Ionicons name="checkmark" size={18} color="#fff" />
+              <Text style={styles.passwordActionText}>Save</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.passwordActionButton,
+                { backgroundColor: "#F44336" },
+              ]}
               onPress={() => {
                 setEditingField(null);
                 setPasswordFields({
@@ -220,22 +243,15 @@ const ProfileScreen = () => {
                 setPasswordError(null);
               }}
             >
-              <Ionicons
-                name="close"
-                size={24}
-                color="#FF0000"
-                style={styles.icon}
-              />
+              <Ionicons name="close" size={18} color="#fff" />
+              <Text style={styles.passwordActionText}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
       ) : (
-        <TouchableOpacity onPress={() => setEditingField("password")}>
-          <Ionicons name="pencil" size={21} color="#333" style={styles.icon} />
-        </TouchableOpacity>
+        <Text style={styles.fieldValue}>••••••••</Text>
       )}
 
-      {/* Success Message */}
       {passwordSuccess && (
         <Text style={styles.successText}>Password changed successfully!</Text>
       )}
@@ -251,80 +267,93 @@ const ProfileScreen = () => {
   }
 
   const { firstName, lastName, emailAddresses, imageUrl } = user;
-  const primaryEmailAddress = emailAddresses[0]?.emailAddress;
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* Modern Header */}
       <View style={styles.header}>
         <TouchableOpacity
-          style={styles.backButton}
+          style={styles.headerIconButton}
           onPress={() => goHome(user)}
         >
-          <Ionicons name="home" size={24} color="#333" />
+          <Ionicons name="home-outline" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit Profile</Text>
+        <View style={styles.headerIconButton} />
       </View>
 
-      {/* Profile Picture */}
-      <View style={styles.profileContainer}>
-        <View style={styles.profileImageWrapper}>
-          <Image source={{ uri: imageUrl }} style={styles.profileImage} />
-          <TouchableOpacity style={styles.editIcon} onPress={pickImage}>
-            <Ionicons name="camera" size={20} color="#fff" />
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.name}>
-          {firstName} {lastName}
-        </Text>
-      </View>
-
-      {/* Editable Fields */}
-      <View style={styles.fieldsContainer}>
-        {renderField("Phone Number", "phoneNumber")}
-        {renderField("Age", "age")}
-        {renderField("Academic Institution", "institution")}
-        {renderField("Degree", "degree")}
-        {renderField("Year of Study", "yearOfStudy")}
-        {renderPasswordField()}
-      </View>
-
-      {/* Delete User Button */}
-      <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={() => {
-          Alert.alert(
-            "Delete Account",
-            "Are you sure you want to delete your account? This action cannot be undone.",
-            [
-              {
-                text: "Cancel",
-                style: "cancel",
-              },
-              {
-                text: "Delete",
-                style: "destructive",
-                onPress: () => {
-                  user
-                    ?.delete()
-                    .then(() => {
-                      router.replace("/auth");
-                    })
-                    .catch((error) => {
-                      console.error("Error deleting user:", error);
-                      Alert.alert(
-                        "Error",
-                        "Failed to delete account. Please try again."
-                      );
-                    });
-                },
-              },
-            ]
-          );
-        }}
+      <ScrollView
+        style={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
       >
-        <Text style={styles.deleteButtonText}>Delete Account</Text>
-      </TouchableOpacity>
+        {/* Profile Card */}
+        <View style={styles.profileCard}>
+          <TouchableOpacity
+            style={styles.profileImageWrapper}
+            onPress={pickImage}
+          >
+            <Image source={{ uri: imageUrl }} style={styles.profileImage} />
+            <View style={styles.editImageIcon}>
+              <Ionicons name="camera" size={16} color="#fff" />
+            </View>
+          </TouchableOpacity>
+          <Text style={styles.userName}>
+            {firstName} {lastName}
+          </Text>
+          <Text style={styles.userEmail}>
+            {emailAddresses[0]?.emailAddress}
+          </Text>
+        </View>
+
+        {/* Profile Fields */}
+        <View style={styles.fieldsContainer}>
+          {renderField("Phone Number", "phoneNumber", "call")}
+          {renderField("Age", "age", "calendar")}
+          {renderField("Institution", "institution", "school")}
+          {renderField("Degree", "degree", "ribbon")}
+          {renderField("Year of Study", "yearOfStudy", "time")}
+          {renderPasswordField()}
+        </View>
+
+        {/* Delete Account Button */}
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => {
+            Alert.alert(
+              "Delete Account",
+              "Are you sure you want to delete your account? This action cannot be undone.",
+              [
+                {
+                  text: "Cancel",
+                  style: "cancel",
+                },
+                {
+                  text: "Delete",
+                  style: "destructive",
+                  onPress: () => {
+                    user
+                      ?.delete()
+                      .then(() => {
+                        router.replace("/auth");
+                      })
+                      .catch((error) => {
+                        console.error("Error deleting user:", error);
+                        Alert.alert(
+                          "Error",
+                          "Failed to delete account. Please try again."
+                        );
+                      });
+                  },
+                },
+              ]
+            );
+          }}
+        >
+          <Ionicons name="trash-outline" size={20} color="#fff" />
+          <Text style={styles.deleteButtonText}>Delete Account</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </View>
   );
 };
@@ -334,147 +363,199 @@ export default ProfileScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9CE60",
-    padding: 20,
-    paddingTop: 70,
+    backgroundColor: "#f8f9fa",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 25,
-    position: "relative",
-  },
-  backButton: {
-    position: "absolute",
-    left: 0,
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "bold",
-    color: "#333",
+    color: "#222",
   },
-  profileContainer: {
+  headerIconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f8f9fa",
     alignItems: "center",
-    marginBottom: 3,
+    justifyContent: "center",
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 40,
+  },
+  profileCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 24,
+    alignItems: "center",
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
   profileImageWrapper: {
     position: "relative",
+    marginBottom: 16,
   },
   profileImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "#f0f0f0",
   },
-  editIcon: {
+  editImageIcon: {
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: "#4CAF50",
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    backgroundColor: "#FF9800",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 3,
+    borderColor: "#fff",
   },
-  name: {
+  userName: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#333",
-    marginTop: 5,
+    color: "#222",
+    marginBottom: 4,
+  },
+  userEmail: {
+    fontSize: 14,
+    color: "#666",
   },
   fieldsContainer: {
-    borderRadius: 15,
-    padding: 15,
-    paddingHorizontal: 10,
+    gap: 12,
   },
-  fieldRow: {
+  fieldCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  fieldHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  fieldLabelContainer: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 15,
-    borderBottomWidth: 0.3,
-    borderBottomColor: "#333",
+    flex: 1,
+  },
+  fieldIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#fff5f0",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
   },
   fieldLabel: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
-    flex: 2,
+    fontWeight: "600",
+    color: "#222",
+  },
+  editButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#f8f9fa",
+    alignItems: "center",
+    justifyContent: "center",
   },
   fieldValue: {
-    fontSize: 16,
+    fontSize: 15,
     color: "#666",
-    flex: 3,
+    paddingLeft: 44,
   },
   fieldInput: {
-    flex: 1,
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    height: 40,
-    backgroundColor: "#f9f9f9",
-    marginBottom: 10,
+    borderColor: "#e0e0e0",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
+    backgroundColor: "#f8f9fa",
+    marginLeft: 44,
   },
-  passwordRow: {
+  passwordContainer: {
+    paddingLeft: 44,
+  },
+  passwordActions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 12,
+  },
+  passwordActionButton: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 15,
+    justifyContent: "center",
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 6,
   },
-  passwordBox: {
-    width: "100%",
-    borderRadius: 15,
-    padding: 5,
-    marginTop: 10,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-  },
-  passwordInput: {
-    width: "100%",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    height: 40,
-    backgroundColor: "#f9f9f9",
-    marginBottom: 10,
-  },
-  actionButtons: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: 10,
-  },
-  icon: {
-    marginLeft: 10,
+  passwordActionText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
   },
   errorText: {
-    color: "red",
-    fontSize: 14,
-    marginTop: 5,
+    color: "#F44336",
+    fontSize: 12,
+    marginTop: 8,
     textAlign: "center",
   },
   successText: {
-    color: "green",
-    fontSize: 14,
-    marginTop: 10,
+    color: "#4CAF50",
+    fontSize: 12,
+    marginTop: 8,
     textAlign: "center",
   },
   deleteButton: {
-    backgroundColor: "#333",
-    paddingVertical: 12,
+    backgroundColor: "#F44336",
+    borderRadius: 16,
+    paddingVertical: 16,
     paddingHorizontal: 24,
-    borderRadius: 25,
-    marginTop: 30,
-    alignSelf: "center",
-    borderWidth: 2,
-    borderColor: "#333",
+    marginTop: 32,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    shadowColor: "#F44336",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
   },
   deleteButtonText: {
-    color: "white",
+    color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
-    textAlign: "center",
   },
 });

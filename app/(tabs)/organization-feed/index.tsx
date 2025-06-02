@@ -233,93 +233,134 @@ const Organization = () => {
 
   return (
     <View style={styles.container}>
-      {/* Header Section */}
+      {/* Modern Header Section */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push("/profile")}>
-          <Image source={{ uri: user?.imageUrl }} style={styles.profileImage} />
-        </TouchableOpacity>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => router.push("/profile")}>
+            <View style={styles.profileImageContainer}>
+              <Image
+                source={{ uri: user?.imageUrl }}
+                style={styles.profileImage}
+              />
+              <View style={styles.onlineIndicator} />
+            </View>
+          </TouchableOpacity>
+          <View style={styles.headerText}>
+            <Text style={styles.welcomeText}>Welcome Back 👋</Text>
+            <Text style={styles.userName}>{user?.firstName}!</Text>
+          </View>
+        </View>
         <View style={styles.headerIcons}>
-          {/* Notification Icon */}
-          <TouchableOpacity onPress={() => router.push("/notification")}>
-            <Ionicons
-              name="notifications-outline"
-              size={24}
-              color="#333"
-              style={styles.icon}
-            />
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => router.push("/organization-notification")}
+          >
+            <Ionicons name="notifications-outline" size={22} color="#333" />
+            <View style={styles.notificationBadge} />
           </TouchableOpacity>
-          {/* Settings Icon */}
-          <TouchableOpacity onPress={() => router.push("/settings")}>
-            <Ionicons
-              name="settings-outline"
-              size={24}
-              color="#333"
-              style={styles.icon}
-            />
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => router.push("/settings")}
+          >
+            <Ionicons name="settings-outline" size={22} color="#333" />
           </TouchableOpacity>
-          {/* Add Task Icon */}
-          <TouchableOpacity onPress={() => setAddTaskVisible(true)}>
-            <Ionicons
-              name="add-circle"
-              size={36}
-              color="#525252"
-              style={styles.icon}
-            />
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => setAddTaskVisible(true)}
+          >
+            <Ionicons name="add" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
       </View>
-      {/* Welcome Section */}
-      <Text style={styles.welcomeText}>
-        Welcome Back, <Text style={styles.bold}>{user?.firstName}</Text>!{" "}
-        <Text style={{ color: "#FF9800" }}>🧡</Text>
-      </Text>
-      {/* Milestone Progress Bar */}
-      <View style={styles.tabRow}>
-        <TouchableOpacity
-          onPress={() => setOrgTab("pending")}
-          style={[styles.tab, orgTab === "pending" && styles.tabActive]}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              orgTab === "pending" && styles.tabTextActive,
-            ]}
+
+      {/* Modern Tab Navigation */}
+      <View style={styles.modernTabContainer}>
+        <View style={styles.tabRow}>
+          <TouchableOpacity
+            onPress={() => setOrgTab("pending")}
+            style={[styles.tab, orgTab === "pending" && styles.tabActive]}
           >
-            {/* Change or remove "Pending" below as you wish */}
-            Pending
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setOrgTab("completed")}
-          style={[styles.tab, orgTab === "completed" && styles.tabActive]}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              orgTab === "completed" && styles.tabTextActive,
-            ]}
+            <View style={styles.tabContent}>
+              <Ionicons
+                name="time-outline"
+                size={18}
+                color={orgTab === "pending" ? "#fff" : "#666"}
+              />
+              <Text
+                style={[
+                  styles.tabText,
+                  orgTab === "pending" && styles.tabTextActive,
+                ]}
+              >
+                Pending
+              </Text>
+              {tasks.filter((t) => !t.completed).length > 0 && (
+                <View style={styles.tabBadge}>
+                  <Text style={styles.tabBadgeText}>
+                    {tasks.filter((t) => !t.completed).length}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setOrgTab("completed")}
+            style={[styles.tab, orgTab === "completed" && styles.tabActive]}
           >
-            Completed
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setOrgTab("statistics")}
-          style={[styles.tab, orgTab === "statistics" && styles.tabActive]}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              orgTab === "statistics" && styles.tabTextActive,
-            ]}
+            <View style={styles.tabContent}>
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={18}
+                color={orgTab === "completed" ? "#fff" : "#666"}
+              />
+              <Text
+                style={[
+                  styles.tabText,
+                  orgTab === "completed" && styles.tabTextActive,
+                ]}
+              >
+                Completed
+              </Text>
+              {tasks.filter((t) => t.completed).length > 0 && (
+                <View style={styles.tabBadge}>
+                  <Text style={styles.tabBadgeText}>
+                    {tasks.filter((t) => t.completed).length}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setOrgTab("statistics")}
+            style={[styles.tab, orgTab === "statistics" && styles.tabActive]}
           >
-            Statistics
-          </Text>
-        </TouchableOpacity>
+            <View style={styles.tabContent}>
+              <Ionicons
+                name="analytics-outline"
+                size={18}
+                color={orgTab === "statistics" ? "#fff" : "#666"}
+              />
+              <Text
+                style={[
+                  styles.tabText,
+                  orgTab === "statistics" && styles.tabTextActive,
+                ]}
+              >
+                Statistics
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {orgTab === "pending" && (
-        <>
-          <Text style={styles.tasksTitle}>Pending Tasks</Text>
+        <View style={styles.contentContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Pending Tasks</Text>
+            <Text style={styles.sectionSubtitle}>
+              {tasks.filter((t) => !t.completed).length} active tasks
+            </Text>
+          </View>
           <FlatList
             data={tasks.filter((t) => !t.completed)}
             keyExtractor={(item) => item._id}
@@ -329,41 +370,57 @@ const Organization = () => {
                 onPressIn={() => setActiveTaskId(item._id)}
                 onPressOut={() => setActiveTaskId(null)}
                 style={[
-                  styles.taskCard,
+                  styles.modernTaskCard,
                   activeTaskId === item._id && styles.taskCardActive,
                 ]}
               >
-                <View style={styles.cardHeaderRow}>
-                  <View style={styles.dot} />
-                  <Text style={styles.taskTitle} numberOfLines={2}>
-                    {item.title}
-                  </Text>
-                  <View style={{ flex: 1 }} />
-                  <Text style={styles.taskTime}>
-                    {item.time
-                      ? new Date(item.time).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
-                      : "No time set"}
-                  </Text>
-                </View>
-                <Text style={styles.taskDescription}>{item.description}</Text>
-                <View style={styles.cardFooterRow}>
-                  <View style={styles.locationRowWrapper}>
-                    <Ionicons name="location-outline" size={16} color="#333" />
-                    <Text
-                      style={styles.locationText}
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
+                <View style={styles.taskCardHeader}>
+                  <View style={styles.taskPriority} />
+                  <View style={styles.taskMainContent}>
+                    <Text style={styles.modernTaskTitle} numberOfLines={2}>
+                      {item.title}
+                    </Text>
+                    <View style={styles.taskTimeContainer}>
+                      <Ionicons name="time-outline" size={14} color="#666" />
+                      <Text style={styles.modernTaskTime}>
+                        {item.time
+                          ? new Date(item.time).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "No time set"}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.taskActions}>
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => handleDeleteTask(item._id)}
                     >
+                      <Ionicons
+                        name="trash-outline"
+                        size={18}
+                        color="#ff4757"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <Text style={styles.modernTaskDescription} numberOfLines={2}>
+                  {item.description}
+                </Text>
+
+                <View style={styles.taskCardFooter}>
+                  <View style={styles.locationContainer}>
+                    <Ionicons name="location-outline" size={16} color="#666" />
+                    <Text style={styles.modernLocationText} numberOfLines={1}>
                       {item.locationLabel || "No location selected"}
                     </Text>
                   </View>
-                  <View style={styles.avatarRowBottom}>
-                    {item.assignedUserImage && (
+                  <View style={styles.assigneeContainer}>
+                    {item.assignedUserImage ? (
                       <TouchableOpacity
-                        style={styles.avatarWrapper}
+                        style={styles.modernAvatarWrapper}
                         onPress={() => {
                           setSelectedUser({
                             name: item.assignedUserName ?? "",
@@ -374,87 +431,91 @@ const Organization = () => {
                       >
                         <Image
                           source={{ uri: item.assignedUserImage }}
-                          style={styles.avatar}
+                          style={styles.modernAvatar}
                         />
+                        <View style={styles.avatarBadge} />
                       </TouchableOpacity>
+                    ) : (
+                      <View style={styles.unassignedIndicator}>
+                        <Ionicons
+                          name="person-add-outline"
+                          size={16}
+                          color="#999"
+                        />
+                      </View>
                     )}
-                    <TouchableOpacity
-                      style={styles.moreButton}
-                      onPress={() => handleDeleteTask(item._id)}
-                    >
-                      <Ionicons name="trash-outline" size={20} color="#fff" />
-                    </TouchableOpacity>
                   </View>
                 </View>
               </TouchableOpacity>
             )}
             ListEmptyComponent={
-              <Text
-                style={{
-                  textAlign: "center",
-                  color: "#888",
-                  marginTop: 20,
-                }}
-              >
-                No pending tasks.
-              </Text>
+              <View style={styles.emptyState}>
+                <Ionicons
+                  name="checkmark-done-outline"
+                  size={64}
+                  color="#ddd"
+                />
+                <Text style={styles.emptyStateTitle}>All caught up!</Text>
+                <Text style={styles.emptyStateSubtitle}>
+                  No pending tasks at the moment.
+                </Text>
+              </View>
             }
             refreshing={refreshing}
             onRefresh={onRefresh}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.flatListContent}
           />
-        </>
+        </View>
       )}
 
       {orgTab === "completed" && (
-        <>
-          <Text style={styles.tasksTitle}>Completed Tasks</Text>
+        <View style={styles.contentContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Completed Tasks</Text>
+            <Text style={styles.sectionSubtitle}>
+              {tasks.filter((t) => t.completed).length} completed
+            </Text>
+          </View>
           <FlatList
             data={tasks.filter((t) => t.completed)}
             keyExtractor={(item) => item._id}
             renderItem={({ item }) => (
-              <View style={styles.taskCard}>
-                <View style={styles.taskInfo}>
-                  <Text style={styles.taskTitle}>{item.title}</Text>
-                  <Text style={styles.taskDescription}>{item.description}</Text>
-                  <Text style={styles.taskDetails}>
-                    <Text style={styles.bold}>
-                      📍 {item.locationLabel || "No location selected"}
+              <View style={styles.completedTaskCard}>
+                <View style={styles.completedHeader}>
+                  <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+                  <View style={styles.completedContent}>
+                    <Text style={styles.completedTaskTitle}>{item.title}</Text>
+                    <Text
+                      style={styles.completedTaskDescription}
+                      numberOfLines={1}
+                    >
+                      {item.description}
                     </Text>
-                    {"\n"}
-                    <Text style={styles.bold}>
-                      ⏰{" "}
-                      {item.time
-                        ? new Date(item.time).toLocaleString()
-                        : "No time set"}
-                    </Text>
+                  </View>
+                  <Text style={styles.completedTime}>
+                    {item.time
+                      ? new Date(item.time).toLocaleDateString()
+                      : "No date"}
                   </Text>
                 </View>
-                <TouchableOpacity
-                  style={[
-                    styles.taskButton,
-                    item.signedUp && styles.taskButtonCompleted,
-                  ]}
-                  onPress={() => handleSignUp(item._id)}
-                >
-                  <Text style={styles.taskButtonText}>
-                    {item.signedUp ? "Completed" : "Pending"}
-                  </Text>
-                </TouchableOpacity>
               </View>
             )}
             ListEmptyComponent={
-              <Text
-                style={{
-                  textAlign: "center",
-                  color: "#888",
-                  marginTop: 20,
-                }}
-              >
-                No completed tasks.
-              </Text>
+              <View style={styles.emptyState}>
+                <Ionicons name="trophy-outline" size={64} color="#ddd" />
+                <Text style={styles.emptyStateTitle}>
+                  No completed tasks yet
+                </Text>
+                <Text style={styles.emptyStateSubtitle}>
+                  Complete some tasks to see them here.
+                </Text>
+              </View>
             }
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.flatListContent}
           />
-        </>
+        </View>
       )}
 
       {orgTab === "statistics" && (
@@ -464,14 +525,66 @@ const Organization = () => {
           percent={Math.round(
             (closedCount / (openCount + closedCount || 1)) * 100
           )}
-          chartData={getChartData(tab, tasks, user)} // see below
+          chartData={getChartData(tab, tasks, user)}
           chartLabels={getChartLabels(tab)}
           tab={tab}
           onTab={setTab}
+          averageCompletionTime={
+            closedCount > 0
+              ? tasks
+                  .filter((task) => task.completed)
+                  .reduce((acc, task) => {
+                    const taskDate = new Date(task.time);
+                    const now = new Date();
+                    const diffInHours =
+                      Math.abs(now.getTime() - taskDate.getTime()) / 3600000;
+                    return acc + (diffInHours > 0 ? diffInHours : 24);
+                  }, 0) / closedCount
+              : 0
+          }
+          overdueTasks={
+            tasks.filter(
+              (task) => !task.completed && new Date(task.time) < new Date()
+            ).length
+          }
         />
       )}
 
-      {/* Add Task Modal */}
+      {/* Modern User Detail Modal */}
+      <Modal
+        visible={userModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setUserModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modernModalContent}>
+            {selectedUser && (
+              <>
+                <View style={styles.modalHeader}>
+                  <View style={styles.modalAvatarContainer}>
+                    <Image
+                      source={{ uri: selectedUser.image }}
+                      style={styles.modalAvatar}
+                    />
+                    <View style={styles.modalAvatarBadge} />
+                  </View>
+                  <Text style={styles.modalUserName}>{selectedUser.name}</Text>
+                  <Text style={styles.modalUserRole}>Task Assignee</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.modernCloseButton}
+                  onPress={() => setUserModalVisible(false)}
+                >
+                  <Text style={styles.modernCloseButtonText}>Close</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Add Task Modal remains the same */}
       <AddTaskModal
         visible={addTaskVisible}
         creating={creating}
@@ -479,71 +592,7 @@ const Organization = () => {
         setNewTask={setNewTask}
         onClose={() => setAddTaskVisible(false)}
         onCreate={handleCreateTask}
-        styles={styles}
       />
-
-      {/* User Detail Modal */}
-      <Modal
-        visible={userModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setUserModalVisible(false)}
-      >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.3)",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: "#fff",
-              borderRadius: 16,
-              padding: 24,
-              alignItems: "center",
-              minWidth: 220,
-            }}
-          >
-            {selectedUser && (
-              <>
-                <Image
-                  source={{ uri: selectedUser.image }}
-                  style={{
-                    width: 60,
-                    height: 60,
-                    borderRadius: 30,
-                    marginBottom: 12,
-                  }}
-                />
-                <Text
-                  style={{
-                    fontWeight: "bold",
-                    fontSize: 18,
-                    marginBottom: 8,
-                  }}
-                >
-                  {selectedUser.name}
-                </Text>
-                {/* Add more user info here if available */}
-              </>
-            )}
-            <TouchableOpacity
-              style={{
-                marginTop: 16,
-                backgroundColor: "#FF9800",
-                borderRadius: 8,
-                paddingVertical: 8,
-                paddingHorizontal: 24,
-              }}
-              onPress={() => setUserModalVisible(false)}
-            >
-              <Text style={{ color: "#fff", fontWeight: "bold" }}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 };
@@ -553,388 +602,455 @@ export default Organization;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9CE60",
-    padding: 20,
+    backgroundColor: "#f8f9fa",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 10,
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  profileImageContainer: {
+    position: "relative",
   },
   profileImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 40,
-    marginTop: 45,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#f0f0f0",
+  },
+  onlineIndicator: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#4CAF50",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  headerText: {
+    marginLeft: 12,
+  },
+  welcomeText: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500",
+  },
+  userName: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#222",
+    marginTop: 2,
   },
   headerIcons: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 60,
   },
-  icon: {
-    marginLeft: 20,
-  },
-  menuIcon: {
-    fontSize: 24,
-    color: "#333",
-  },
-  progressContainer: {
-    marginBottom: 30,
-  },
-  progressTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  progressBar: {
-    borderColor: "#00000",
-    borderRadius: 5,
-    width: "100%",
-  },
-  tasksTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  taskCard: {
-    // borderWidth: 1,
-    // borderColor: "#525252", // Add black border
-    padding: 18,
-    marginBottom: 18,
-    // backgroundColor: "#F9CE60",
-    minHeight: 120,
-    borderRadius: 16,
-    // Shadow for iOS
-    // shadowColor: "#000",
-    // shadowOffset: { width: 0, height: 4 },
-    // shadowOpacity: 0.18,
-    // shadowRadius: 8,
-    // Shadow for Android
-    backgroundColor: "rgba(255, 255, 255, 0.5)",
-    // borderColor: "#000",
-    // borderRadius: 15,
-    // padding: 15,
-    // marginBottom: 15,
-    // shadowColor: "#fff",
-    // shadowOpacity: 2,
-    // shadowRadius: 5,
-    // flexDirection: "row",
-    // justifyContent: "space-between",
-    // alignItems: "center",
-  },
-  taskCardActive: {
-    borderColor: "#000",
-    borderWidth: 2,
-  },
-  taskInfo: {
-    flex: 1,
-    minWidth: 0,
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f8f9fa",
+    alignItems: "center",
     justifyContent: "center",
+    marginLeft: 8,
+    position: "relative",
   },
-  taskRightColumn: {
-    width: 80,
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    flexDirection: "column",
-  },
-  taskTitle: {
-    fontSize: 17,
-    fontWeight: "bold",
-    color: "#222",
-    flexShrink: 1,
-  },
-  taskDescription: {
-    fontSize: 14,
-    color: "#444",
-    marginVertical: 6,
-    marginLeft: 20,
-  },
-  checkedICON: {
-    width: 30,
-    height: 30,
-  },
-  signupICON: {
-    // width: 50,
-    // height: 30,
-    right: 10,
-  },
-  taskDetails: {
-    fontSize: 12,
-    color: "#333",
-  },
-  bold: {
-    fontWeight: "bold",
-  },
-  taskButton: {
+  notificationBadge: {
     position: "absolute",
-    right: 20,
-    bottom: 8,
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#ff4757",
   },
-  taskButtonCompleted: {
-    backgroundColor: "#4CAF50",
-    borderRadius: 9,
-    padding: 4,
-  },
-  taskButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  statisticsBar: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-    borderRadius: 15,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-  },
-  statisticsItem: {
+  addButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FF9800",
     alignItems: "center",
-    flex: 1,
-  },
-  statisticsLabel: {
-    fontSize: 14,
-    color: "#666",
-    marginTop: 5,
-  },
-  statisticsValue: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#333",
-    marginTop: 5,
-  },
-  statisticsIcon: {
-    width: 80,
-    height: 80,
-  },
-  lottieIcon: {
-    width: 50,
-    height: 50,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.3)",
     justifyContent: "center",
-    alignItems: "center",
+    marginLeft: 8,
+    shadowColor: "#FF9800",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
   },
-  modalContent: {
+  modernTabContainer: {
     backgroundColor: "#fff",
-    borderRadius: 18,
-    padding: 22,
-    width: "90%",
-    elevation: 8,
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 14,
-    color: "#FF9800",
-    textAlign: "center",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 10,
-    fontSize: 16,
-    backgroundColor: "#fafafa",
-  },
-  modalButton: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginHorizontal: 4,
-  },
-  createTaskButton: {
-    backgroundColor: "#525252",
-    borderRadius: 5,
-    padding: 10,
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  createTaskButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  closeButton: {
-    backgroundColor: "#ccc",
-    borderRadius: 5,
-    padding: 10,
-    alignItems: "center",
-  },
-  closeButtonText: {
-    color: "#333",
-    fontWeight: "bold",
-  },
-  tab: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  tabActive: {
-    backgroundColor: "#525252", // Changed from #FF9800 to match home feed
-  },
-  tabText: {
-    color: "#888",
-    fontWeight: "bold",
-    fontSize: 15,
-  },
-  tabTextActive: {
-    color: "#fff", // Changed from #fff to match home feed
-  },
-  welcomeText: {
-    fontSize: 18,
-    fontWeight: "500",
-    marginBottom: 10,
-    marginTop: 10,
-    color: "#222",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   tabRow: {
     flexDirection: "row",
-    justifyContent: "space-around",
-    marginVertical: 14,
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    padding: 4,
-    elevation: 1,
-  },
-  pendingBadgeContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff3cd",
+    backgroundColor: "#f8f9fa",
     borderRadius: 12,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    marginBottom: 8,
-    alignSelf: "flex-end",
+    padding: 4,
   },
-  pendingBadgeText: {
-    fontSize: 12,
-    color: "#856404",
-    marginLeft: 4,
-  },
-  avatarWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: "#fff",
-    overflow: "hidden",
-    backgroundColor: "#eee",
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-  },
-  moreButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#525252",
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: 8,
-    elevation: 1,
-  },
-  avatarBadge: {
-    position: "absolute",
-    bottom: 0,
-    right: 5,
-    backgroundColor: "#4CAF50",
+  tab: {
+    flex: 1,
     borderRadius: 8,
-    width: 16,
-    height: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    marginHorizontal: 2, // Add small margin between tabs
+  },
+  tabActive: {
+    backgroundColor: "#FF9800",
+    shadowColor: "#FF9800",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  tabContent: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    position: "relative",
+    minHeight: 24, // Ensure minimum height
   },
-  avatarTouchable: {
-    alignSelf: "flex-end",
-    marginTop: "auto", // Push to bottom
+  tabText: {
+    color: "#666",
+    fontWeight: "600",
+    fontSize: 13, // Slightly smaller font
+    marginLeft: 4, // Reduce margin
+    textAlign: "center",
   },
-  avatarRow: {
-    flexDirection: "row",
+  tabTextActive: {
+    color: "#fff",
+  },
+  tabBadge: {
+    position: "absolute",
+    top: -12, // Move higher up
+    right: -6, // Adjust right position
+    backgroundColor: "#ff4757",
+    borderRadius: 10,
+    minWidth: 18, // Slightly smaller
+    height: 18, // Slightly smaller
     alignItems: "center",
-    marginTop: 8,
+    justifyContent: "center",
+    paddingHorizontal: 4, // Reduce padding
+    zIndex: 10, // Ensure it's above other elements
   },
-  avatarRowBottom: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexShrink: 0,
-    marginLeft: 8,
-  },
-  avatarName: {
-    fontSize: 12,
-    color: "#333",
+  tabBadgeText: {
+    color: "#fff",
+    fontSize: 10, // Smaller font
     fontWeight: "bold",
   },
-  groupLabel: {
-    color: "#B39DDB",
-    fontSize: 13,
-    marginBottom: 2,
-    marginLeft: 2,
+  contentContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
   },
-  dot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#525252",
-    marginRight: 8,
-    marginTop: 2,
+  sectionHeader: {
+    marginVertical: 20,
   },
-  locationRow: {
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#222",
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 4,
+  },
+  modernTaskCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+    borderLeftWidth: 4,
+    borderLeftColor: "#FF9800",
+  },
+  taskCardActive: {
+    borderLeftColor: "#ff4757",
+    transform: [{ scale: 0.98 }],
+  },
+  taskCardHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 12,
+  },
+  taskPriority: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#FF9800",
+    marginRight: 12,
+    marginTop: 6,
+  },
+  taskMainContent: {
+    flex: 1,
+  },
+  modernTaskTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#222",
+    marginBottom: 6,
+  },
+  taskTimeContainer: {
     flexDirection: "row",
     alignItems: "center",
   },
-  locationRowWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    minWidth: 0, // allows text truncation
-    marginRight: 8,
-  },
-  locationText: {
-    fontSize: 13,
-    color: "#222",
-    marginLeft: 4,
-    flex: 1,
-    minWidth: 0,
-  },
-  taskTime: {
-    fontSize: 16,
-    color: "#222",
+  modernTaskTime: {
+    fontSize: 14,
+    color: "#666",
+    marginLeft: 6,
     fontWeight: "500",
-    marginLeft: 10,
-    marginTop: 2,
   },
-  cardHeaderRow: {
-    flexDirection: "row",
+  taskActions: {
     alignItems: "center",
-    marginBottom: 2,
   },
-  cardFooterRow: {
+  deleteButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#fff5f5",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modernTaskDescription: {
+    fontSize: 15,
+    color: "#555",
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  taskCardFooter: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  locationContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 12,
+  },
+  modernLocationText: {
+    fontSize: 14,
+    color: "#666",
+    marginLeft: 8,
+    flex: 1,
+  },
+  assigneeContainer: {
+    alignItems: "center",
+  },
+  modernAvatarWrapper: {
+    position: "relative",
+  },
+  modernAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#f0f0f0",
+  },
+  avatarBadge: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#4CAF50",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  unassignedIndicator: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#f8f9fa",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#e0e0e0",
+    borderStyle: "dashed",
+  },
+  completedTaskCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+    borderLeftWidth: 4,
+    borderLeftColor: "#4CAF50",
+  },
+  completedHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  completedContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  completedTaskTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#222",
+    textDecorationLine: "line-through",
+    textDecorationColor: "#999",
+  },
+  completedTaskDescription: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 2,
+  },
+  completedTime: {
+    fontSize: 12,
+    color: "#999",
+    fontWeight: "500",
+  },
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#222",
     marginTop: 16,
+  },
+  emptyStateSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 8,
+    textAlign: "center",
+  },
+  flatListContent: {
+    paddingBottom: 100,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modernModalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 24,
+    alignItems: "center",
+    minWidth: 280,
+    maxWidth: 320,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 10,
+  },
+  modalHeader: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  modalAvatarContainer: {
+    position: "relative",
+    marginBottom: 16,
+  },
+  modalAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#f0f0f0",
+  },
+  modalAvatarBadge: {
+    position: "absolute",
+    bottom: 4,
+    right: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#4CAF50",
+    borderWidth: 3,
+    borderColor: "#fff",
+  },
+  modalUserName: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#222",
+    marginBottom: 4,
+  },
+  modalUserRole: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500",
+  },
+  modernCloseButton: {
+    backgroundColor: "#FF9800",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    minWidth: 120,
+  },
+  modernCloseButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+    textAlign: "center",
   },
 });
 
 function getChartLabels(tab: "day" | "week" | "month" | "year") {
   const now = new Date();
   if (tab === "year") {
-    const year = now.getFullYear();
-    return Array.from({ length: 5 }, (_, i) => (year - 4 + i).toString());
+    return ["2021", "2022", "2023", "2024", "2025"];
+  } else if (tab === "month") {
+    const monthNames = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+    return Array.from({ length: 6 }, (_, i) => {
+      const monthIndex = (now.getMonth() - 5 + i + 12) % 12;
+      return monthNames[monthIndex];
+    });
+  } else if (tab === "week") {
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(now);
+      date.setDate(now.getDate() - 6 + i);
+      return date.getDate().toString();
+    });
+  } else if (tab === "day") {
+    return ["6AM", "9AM", "12PM", "3PM", "6PM", "9PM"];
   }
-  return [];
+  return ["No Data"];
 }
 
 function getChartData(
@@ -943,17 +1059,63 @@ function getChartData(
   user: any
 ) {
   const now = new Date();
+
   if (tab === "year") {
+    // Only show real task growth based on actual tasks
     const arr = Array(5).fill(0);
     const year = now.getFullYear();
     tasks.forEach((task) => {
-      const d = new Date(task.time);
-      if (task.createdBy === user.id) {
-        const idx = d.getFullYear() - (year - 4);
-        if (idx >= 0 && idx < 5) arr[idx]++;
+      const taskDate = new Date(task.time);
+      const taskYear = taskDate.getFullYear();
+      const idx = taskYear - (year - 4);
+      if (idx >= 0 && idx < 5) {
+        arr[idx]++;
       }
     });
     return arr;
+  } else if (tab === "month") {
+    // Show real tasks over last 6 months
+    const arr = Array(6).fill(0);
+    tasks.forEach((task) => {
+      const taskDate = new Date(task.time);
+      const monthsDiff =
+        (now.getFullYear() - taskDate.getFullYear()) * 12 +
+        (now.getMonth() - taskDate.getMonth());
+      if (monthsDiff >= 0 && monthsDiff < 6) {
+        arr[5 - monthsDiff]++;
+      }
+    });
+    return arr; // Return real data only
+  } else if (tab === "week") {
+    // Show real daily task activity for the current week
+    const arr = Array(7).fill(0);
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - 6);
+
+    tasks.forEach((task) => {
+      const taskDate = new Date(task.time);
+      const daysDiff = Math.floor(
+        (taskDate.getTime() - startOfWeek.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      if (daysDiff >= 0 && daysDiff < 7) {
+        arr[daysDiff]++;
+      }
+    });
+    return arr; // Return real data only, no fake random data
+  } else if (tab === "day") {
+    // Show real task activity throughout the day
+    const arr = Array(6).fill(0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    tasks.forEach((task) => {
+      const taskDate = new Date(task.time);
+      if (taskDate.toDateString() === today.toDateString()) {
+        const period = Math.floor(taskDate.getHours() / 4);
+        if (period >= 0 && period < 6) arr[period]++;
+      }
+    });
+    return arr; // Return real data only
   }
-  return [];
+  return [0]; // Return zero data instead of fake data
 }

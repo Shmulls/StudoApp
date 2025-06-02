@@ -13,8 +13,15 @@
  *   />
  */
 
-import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import React, { useState } from "react";
+import {
+  Animated,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { Task } from "../types/task";
 
 interface TaskCardProps {
@@ -23,116 +30,240 @@ interface TaskCardProps {
   onComplete: (taskId: string) => void;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, onSignUp, onComplete }) => (
-  <View style={styles.taskCard}>
-    <View style={styles.taskInfo}>
-      <Text style={styles.taskTitle}>{task.title}</Text>
-      <Text style={styles.taskDescription}>{task.description}</Text>
-      <Text style={styles.taskDetails}>
-        <Text style={styles.bold}>
-          📍 {task.locationLabel || "No location selected"}
-        </Text>
+const TaskCard = ({ task, onSignUp, onComplete }: TaskCardProps) => {
+  const [isPressed, setIsPressed] = useState(false);
+  const scaleValue = new Animated.Value(1);
+
+  const handlePressIn = () => {
+    setIsPressed(true);
+    Animated.spring(scaleValue, {
+      toValue: 0.95,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    setIsPressed(false);
+    Animated.spring(scaleValue, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const renderActionButtons = () => {
+    if (!task.signedUp) {
+      // Register Button
+      return (
+        <Animated.View style={{ transform: [{ scale: scaleValue }] }}>
+          <TouchableOpacity
+            style={styles.modernRegisterButton}
+            onPress={() => onSignUp(task._id)}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            activeOpacity={0.9}
+          >
+            <View style={styles.buttonContent}>
+              <Ionicons name="person-add" size={16} color="#fff" />
+              <Text style={styles.registerButtonText}>Register</Text>
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+      );
+    } else {
+      // Complete and Cancel buttons
+      return (
+        <View style={styles.assignedButtonContainer}>
+          <TouchableOpacity
+            style={styles.modernCancelButton}
+            onPress={() => onSignUp(task._id)} // This will toggle signedUp to false
+            activeOpacity={0.8}
+          >
+            <Ionicons name="trash-outline" size={16} color="#ff4757" />
+          </TouchableOpacity>
+          <Animated.View style={{ transform: [{ scale: scaleValue }] }}>
+            <TouchableOpacity
+              style={styles.modernCompleteButton}
+              onPress={() => onComplete(task._id)}
+              onPressIn={handlePressIn}
+              onPressOut={handlePressOut}
+              activeOpacity={0.9}
+            >
+              <View style={styles.buttonContent}>
+                <Ionicons name="checkmark-circle" size={16} color="#fff" />
+                <Text style={styles.completeButtonText}>Complete</Text>
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      );
+    }
+  };
+
+  return (
+    <View style={styles.modernTaskCard}>
+      <View style={styles.taskCardHeader}>
+        <View style={styles.taskPriority} />
+        <View style={styles.taskMainContent}>
+          <Text style={styles.modernTaskTitle} numberOfLines={2}>
+            {task.title}
+          </Text>
+          <View style={styles.taskTimeContainer}>
+            <Ionicons name="time-outline" size={14} color="#666" />
+            <Text style={styles.modernTaskTime}>
+              {task.time
+                ? new Date(task.time).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "No time set"}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      <Text style={styles.modernTaskDescription} numberOfLines={2}>
+        {task.description}
       </Text>
-      <Text style={styles.taskDetails}>
-        <Text style={styles.bold}>
-          ⏰{" "}
-          {new Date(task.time).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </Text>
-      </Text>
+
+      <View style={styles.taskCardFooter}>
+        <View style={styles.locationContainer}>
+          <Ionicons name="location-outline" size={16} color="#666" />
+          <Text style={styles.modernLocationText} numberOfLines={1}>
+            {task.locationLabel || "No location selected"}
+          </Text>
+        </View>
+        {renderActionButtons()}
+      </View>
     </View>
-    <View style={styles.taskActions}>
-      <TouchableOpacity
-        style={[styles.taskButton, task.signedUp && styles.taskButtonCompleted]}
-        onPress={() => onSignUp(task._id)}
-      >
-        <Text style={styles.taskButtonText}>
-          {task.signedUp ? "Cancel" : "Register"}
-        </Text>
-      </TouchableOpacity>
-      {task.signedUp && (
-        <TouchableOpacity
-          style={styles.completeButton}
-          onPress={() => onComplete(task._id)}
-        >
-          <Text style={styles.completeButtonText}>Complete</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  </View>
-);
+  );
+};
+
+export default TaskCard;
 
 const styles = StyleSheet.create({
-  taskCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.5)",
-    borderColor: "#000",
-    borderRadius: 15,
-    padding: 15,
-    marginBottom: 15,
-    shadowColor: "#fff",
-    shadowOpacity: 2,
-    shadowRadius: 5,
+  modernTaskCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+    borderLeftWidth: 4,
+    borderLeftColor: "#FF9800",
+  },
+  taskCardHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 12,
+  },
+  taskPriority: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#FF9800",
+    marginRight: 12,
+    marginTop: 6,
+  },
+  taskMainContent: {
+    flex: 1,
+  },
+  modernTaskTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#222",
+    marginBottom: 6,
+  },
+  taskTimeContainer: {
+    flexDirection: "row",
     alignItems: "center",
   },
-  taskInfo: {
-    flex: 1,
-    marginRight: 10,
-  },
-  taskTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 5,
-  },
-  taskDescription: {
+  modernTaskTime: {
     fontSize: 14,
     color: "#666",
-    marginBottom: 5,
+    marginLeft: 6,
+    fontWeight: "500",
   },
-  taskDetails: {
-    fontSize: 12,
-    color: "#333",
+  modernTaskDescription: {
+    fontSize: 15,
+    color: "#555",
+    lineHeight: 22,
+    marginBottom: 16,
   },
-  bold: {
-    fontWeight: "bold",
-  },
-  taskActions: {
+  taskCardFooter: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-start",
-    gap: 10,
+    justifyContent: "space-between",
   },
-  taskButton: {
+  locationContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 12,
+  },
+  modernLocationText: {
+    fontSize: 14,
+    color: "#666",
+    marginLeft: 8,
+    flex: 1,
+  },
+  modernRegisterButton: {
     backgroundColor: "#4CAF50",
-    paddingVertical: 0.5,
-    paddingHorizontal: 4,
-    borderRadius: 5,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    shadowColor: "#4CAF50",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
   },
-  taskButtonCompleted: {
-    backgroundColor: "#CC5500",
-    paddingVertical: 0.5,
-    paddingHorizontal: 4,
-    borderRadius: 5,
+  assignedButtonContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
-  taskButtonText: {
-    borderRadius: 4,
-    padding: 8,
+  modernCancelButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#fff5f5",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#ffe0e0",
+  },
+  modernCompleteButton: {
+    backgroundColor: "#FF9800",
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    shadowColor: "#FF9800",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  buttonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  registerButtonText: {
     color: "#fff",
+    fontSize: 14,
     fontWeight: "bold",
   },
-  completeButton: {
-    backgroundColor: "#007BFF",
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    borderRadius: 5,
-  },
   completeButtonText: {
-    color: "white",
+    color: "#fff",
+    fontSize: 14,
     fontWeight: "bold",
   },
 });
-
-export default TaskCard;

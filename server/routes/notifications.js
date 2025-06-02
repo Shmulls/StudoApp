@@ -4,10 +4,22 @@ const router = express.Router();
 
 // Create a new notification
 router.post("/", async (req, res) => {
-  const { userId, title, message } = req.body;
+  const { userId, title, message, type, taskId, completedBy } = req.body;
   try {
-    const notification = new Notification({ userId, title, message });
+    const notification = new Notification({
+      userId,
+      title,
+      message,
+      type: type || "general",
+      taskId,
+      completedBy,
+    });
     await notification.save();
+
+    // Get io instance and emit real-time notification
+    const io = req.app.get("io");
+    io.to(`org_${userId}`).emit("new-notification", notification);
+
     res.status(201).json(notification);
   } catch (error) {
     console.error("Error creating notification:", error);
@@ -22,21 +34,23 @@ router.get("/:userId", async (req, res) => {
     const notifications = await Notification.find({ userId }).sort({
       createdAt: -1,
     });
-    res.json(notifications);
+    res.json({ data: notifications }); // Wrap in data object to match frontend expectation
   } catch (error) {
     console.error("Error retrieving notifications:", error);
     res.status(500).json({ message: "Error retrieving notifications" });
   }
 });
 
-// Update notification status (e.g., mark as read)
+// Update notification to mark as read
 router.patch("/:id", async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
   try {
+    // Convert status to read boolean
+    const read = status === "read";
     const notification = await Notification.findByIdAndUpdate(
       id,
-      { status },
+      { read, updatedAt: new Date() },
       { new: true }
     );
     if (!notification) {

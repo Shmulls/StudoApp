@@ -34,8 +34,7 @@ export default function TabLayout() {
     >
       <Stack.Screen name="home/index" />
       <Stack.Screen name="organization-feed/index" />
-      <Stack.Screen name="organization-settings/index" />
-      <Stack.Screen name="organization-notification/index" />
+      {/* <Stack.Screen name="organization-notification/index" /> */}
       <Stack.Screen name="settings/index" />
       <Stack.Screen name="profile/index" />
       <Stack.Screen name="notification/index" />

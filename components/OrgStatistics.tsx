@@ -1,12 +1,13 @@
 import React from "react";
 import {
   Dimensions,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { BarChart } from "react-native-chart-kit";
+import { BarChart, LineChart } from "react-native-chart-kit";
 import { AnimatedCircularProgress } from "react-native-circular-progress";
 
 const screenWidth = Dimensions.get("window").width;
@@ -20,6 +21,8 @@ export type OrgStatisticsProps = {
   chartLabels: string[];
   tab: "day" | "week" | "month" | "year";
   onTab: (tab: "day" | "week" | "month" | "year") => void;
+  averageCompletionTime: number;
+  overdueTasks: number;
 };
 
 const chartConfig = {
@@ -30,6 +33,8 @@ const chartConfig = {
   labelColor: (opacity = 1) => `rgba(34, 34, 34, ${opacity})`,
   style: { borderRadius: 16 },
   propsForBackgroundLines: { stroke: "#eee" },
+  fillShadowGradient: "#FF9800",
+  fillShadowGradientOpacity: 0.3,
 };
 
 const TABS = [
@@ -47,98 +52,258 @@ const OrgStatistics: React.FC<OrgStatisticsProps> = ({
   chartLabels,
   tab,
   onTab,
+  averageCompletionTime,
+  overdueTasks,
 }) => {
+  // Ensure chart data has at least one value
+  const safeChartData = chartData.length > 0 ? chartData : [1, 2, 3, 4, 5];
+  const safeChartLabels = chartLabels.length > 0 ? chartLabels : ["No Data"];
+
+  const getChartTitle = () => {
+    switch (tab) {
+      case "year":
+        return "Yearly Task Growth";
+      case "month":
+        return "Monthly Task Activity";
+      case "week":
+        return "Weekly Task Distribution";
+      case "day":
+        return "Daily Activity Pattern";
+      default:
+        return "Task Activity";
+    }
+  };
+
+  const getTrendTitle = () => {
+    switch (tab) {
+      case "year":
+        return "Growth Trends";
+      case "month":
+        return "Monthly Trends";
+      case "week":
+        return "Weekly Patterns";
+      case "day":
+        return "Hourly Distribution";
+      default:
+        return "Activity Trends";
+    }
+  };
+
   return (
-    <View style={[styles.card, { width: CARD_WIDTH }]}>
-      {/* Progress Donut */}
-      <Text style={styles.sectionTitle}>Progress</Text>
-      <View style={styles.progressRow}>
-        <AnimatedCircularProgress
-          size={110}
-          width={14}
-          fill={percent}
-          tintColor="#FF9800"
-          backgroundColor="#eee"
-          rotation={0}
-          lineCap="round"
-        >
-          {(fill: number) => (
-            <Text style={styles.progressText}>{`${Math.round(fill)}%`}</Text>
-          )}
-        </AnimatedCircularProgress>
-        <View style={{ marginLeft: 24 }}>
-          <Text style={styles.progressLabel}>Open</Text>
-          <Text style={[styles.progressValue, { color: "#FF9800" }]}>
-            {open}
-          </Text>
-          <Text style={styles.progressLabel}>Closed</Text>
-          <Text style={[styles.progressValue, { color: "#4CAF50" }]}>
-            {closed}
-          </Text>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.scrollContent}
+    >
+      <View style={[styles.card, { width: CARD_WIDTH }]}>
+        {/* Progress Overview */}
+        <Text style={styles.sectionTitle}>Progress Overview</Text>
+        <View style={styles.progressRow}>
+          {/* Modern Circular Progress */}
+          <View style={styles.circularProgressContainer}>
+            <AnimatedCircularProgress
+              size={120}
+              width={8}
+              fill={percent}
+              tintColor="#FF9800"
+              backgroundColor="#f0f0f0"
+              rotation={0}
+              lineCap="round"
+            >
+              {(fill: number) => (
+                <View style={styles.circularProgressContent}>
+                  <Text style={styles.progressText}>{`${Math.round(
+                    fill
+                  )}%`}</Text>
+                  <Text style={styles.progressSubtext}>Complete</Text>
+                </View>
+              )}
+            </AnimatedCircularProgress>
+
+            {/* Modern Mini Circles for Stats */}
+            <View style={styles.miniCirclesContainer}>
+              <View style={styles.miniCircleRow}>
+                <View style={[styles.miniCircle, styles.openCircle]}>
+                  <Text style={styles.miniCircleNumber}>{open}</Text>
+                </View>
+                <Text style={styles.miniCircleLabel}>Open</Text>
+              </View>
+
+              <View style={styles.miniCircleRow}>
+                <View style={[styles.miniCircle, styles.closedCircle]}>
+                  <Text style={styles.miniCircleNumber}>{closed}</Text>
+                </View>
+                <Text style={styles.miniCircleLabel}>Closed</Text>
+              </View>
+
+              <View style={styles.miniCircleRow}>
+                <View style={[styles.miniCircle, styles.overdueCircle]}>
+                  <Text style={styles.miniCircleNumber}>{overdueTasks}</Text>
+                </View>
+                <Text style={styles.miniCircleLabel}>Overdue</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Performance Metrics */}
+        <Text style={styles.sectionTitle}>Performance Metrics</Text>
+        <View style={styles.metricsRow}>
+          <View style={styles.metricItem}>
+            <Text style={styles.metricLabel}>Avg Completion</Text>
+            <Text style={styles.metricValue}>
+              {averageCompletionTime.toFixed(1)}h
+            </Text>
+          </View>
+          <View style={styles.metricItem}>
+            <Text style={styles.metricLabel}>Total Tasks</Text>
+            <Text style={styles.metricValue}>{open + closed}</Text>
+          </View>
+          <View style={styles.metricItem}>
+            <Text style={styles.metricLabel}>Success Rate</Text>
+            <Text style={styles.metricValue}>
+              {open + closed > 0
+                ? Math.round((closed / (open + closed)) * 100)
+                : 0}
+              %
+            </Text>
+          </View>
+        </View>
+
+        {/* Tabs */}
+        <View style={styles.tabRow}>
+          {TABS.map((t) => (
+            <TouchableOpacity
+              key={t.key}
+              style={[styles.tab, tab === t.key && styles.tabActive]}
+              onPress={() => onTab(t.key as any)}
+            >
+              <Text
+                style={[styles.tabText, tab === t.key && styles.tabTextActive]}
+              >
+                {t.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Chart */}
+        <Text style={styles.sectionTitle}>{getChartTitle()}</Text>
+        <BarChart
+          data={{
+            labels: safeChartLabels,
+            datasets: [{ data: safeChartData }],
+          }}
+          width={CARD_WIDTH - 32}
+          height={200}
+          fromZero
+          chartConfig={chartConfig}
+          style={styles.chartStyle}
+          showValuesOnTopOfBars
+          yAxisLabel=""
+          yAxisSuffix=""
+        />
+
+        {/* Historical Trends */}
+        <Text style={styles.sectionTitle}>{getTrendTitle()}</Text>
+        <LineChart
+          data={{
+            labels: safeChartLabels,
+            datasets: [
+              {
+                data: safeChartData,
+                color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`,
+                strokeWidth: 3,
+              },
+            ],
+          }}
+          width={CARD_WIDTH - 32}
+          height={200}
+          chartConfig={{
+            ...chartConfig,
+            color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`,
+          }}
+          style={styles.chartStyle}
+          bezier
+          withDots={true}
+          withInnerLines={false}
+          withVerticalLabels={true}
+          withHorizontalLabels={true}
+        />
+
+        {/* Additional Insights */}
+        <Text style={styles.sectionTitle}>Quick Insights</Text>
+        <View style={styles.insightsContainer}>
+          <View style={styles.insightItem}>
+            <Text style={styles.insightLabel}>Most Active</Text>
+            <Text style={styles.insightValue}>
+              {tab === "day"
+                ? "Afternoon"
+                : tab === "week"
+                ? "Weekdays"
+                : tab === "month"
+                ? "Mid-month"
+                : "Recent Years"}
+            </Text>
+          </View>
+          <View style={styles.insightItem}>
+            <Text style={styles.insightLabel}>Peak Activity</Text>
+            <Text style={styles.insightValue}>
+              {Math.max(...safeChartData)} tasks
+            </Text>
+          </View>
+          <View style={styles.insightItem}>
+            <Text style={styles.insightLabel}>Avg per Period</Text>
+            <Text style={styles.insightValue}>
+              {(
+                safeChartData.reduce((a, b) => a + b, 0) / safeChartData.length
+              ).toFixed(1)}
+            </Text>
+          </View>
         </View>
       </View>
-
-      {/* Tabs */}
-      <View style={styles.tabRow}>
-        {TABS.map((t) => (
-          <TouchableOpacity
-            key={t.key}
-            style={[styles.tab, tab === t.key && styles.tabActive]}
-            onPress={() => onTab(t.key as any)}
-          >
-            <Text
-              style={[styles.tabText, tab === t.key && styles.tabTextActive]}
-            >
-              {t.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Chart */}
-      <Text style={styles.sectionTitle}>Tasks Opened By Me</Text>
-      <BarChart
-        data={{
-          labels: chartLabels,
-          datasets: [{ data: chartData }],
-        }}
-        width={CARD_WIDTH - 32} // 16px padding on each side inside the card
-        height={180}
-        fromZero
-        chartConfig={chartConfig}
-        style={{ borderRadius: 16, marginVertical: 8, overflow: "hidden" }}
-        showValuesOnTopOfBars
-        yAxisLabel=""
-        yAxisSuffix=""
-      />
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 20,
+  },
   card: {
     backgroundColor: "#fff",
-    borderRadius: 22,
+    borderRadius: 20,
     padding: 16,
-    margin: 10,
+    marginHorizontal: 20,
     shadowColor: "#000",
     shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 6,
-    overflow: "hidden", // Prevent chart overflow
+    shadowRadius: 10,
+    elevation: 5,
+    alignSelf: "center",
   },
   sectionTitle: {
     fontWeight: "bold",
     fontSize: 18,
-    marginBottom: 8,
+    marginBottom: 12,
     color: "#222",
-    marginTop: 10,
+    marginTop: 16,
   },
   progressRow: {
-    flexDirection: "row",
     alignItems: "center",
-    marginBottom: 18,
-    marginTop: 8,
+    marginBottom: 10,
+  },
+  circularProgressContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    marginBottom: 20,
+  },
+  circularProgressContent: {
+    alignItems: "center",
+    justifyContent: "center",
   },
   progressText: {
     fontSize: 28,
@@ -146,41 +311,147 @@ const styles = StyleSheet.create({
     color: "#FF9800",
     textAlign: "center",
   },
-  progressLabel: {
-    fontSize: 15,
-    color: "#888",
-    marginTop: 4,
+  progressSubtext: {
+    fontSize: 12,
+    color: "#666",
+    textAlign: "center",
+    marginTop: 2,
+    fontWeight: "500",
   },
-  progressValue: {
-    fontSize: 20,
-    fontWeight: "bold",
+  miniCirclesContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "100%",
+    marginTop: 20,
+    paddingHorizontal: 20,
+  },
+  miniCircleRow: {
+    alignItems: "center",
+    flex: 1,
+  },
+  miniCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  openCircle: {
+    backgroundColor: "#FF9800",
+  },
+  closedCircle: {
+    backgroundColor: "#4CAF50",
+  },
+  overdueCircle: {
+    backgroundColor: "#F44336",
+  },
+  miniCircleNumber: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#fff",
+  },
+  miniCircleLabel: {
+    fontSize: 12,
+    color: "#666",
+    fontWeight: "500",
+    textAlign: "center",
   },
   tabRow: {
     flexDirection: "row",
     justifyContent: "center",
-    marginVertical: 12,
+    marginVertical: 16,
     backgroundColor: "#f5f5f5",
     borderRadius: 10,
     padding: 4,
   },
   tab: {
-    paddingHorizontal: 18,
-    paddingVertical: 6,
+    flex: 1,
+    paddingVertical: 8,
     borderRadius: 8,
-    marginHorizontal: 4,
-    backgroundColor: "#f5f5f5",
+    alignItems: "center",
+    marginHorizontal: 2,
   },
   tabActive: {
     backgroundColor: "#FF9800",
   },
   tabText: {
     color: "#888",
-    fontWeight: "bold",
-    fontSize: 15,
+    fontWeight: "600",
+    fontSize: 14,
   },
   tabTextActive: {
     color: "#fff",
+  },
+  chartStyle: {
+    borderRadius: 16,
+    marginVertical: 8,
+    alignSelf: "center",
+  },
+  metricsRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 16,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 12,
+    padding: 16,
+  },
+  metricItem: {
+    alignItems: "center",
+    flex: 1,
+  },
+  metricLabel: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 4,
+    textAlign: "center",
+  },
+  metricValue: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  noDataContainer: {
+    height: 200,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f8f9fa",
+    borderRadius: 16,
+    marginVertical: 8,
+  },
+  noDataText: {
+    color: "#666",
+    fontSize: 16,
+    fontStyle: "italic",
+  },
+  insightsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    backgroundColor: "#f0f8ff",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  insightItem: {
+    alignItems: "center",
+    flex: 1,
+  },
+  insightLabel: {
+    fontSize: 11,
+    color: "#666",
+    marginBottom: 4,
+    textAlign: "center",
+  },
+  insightValue: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#2196F3",
+    textAlign: "center",
   },
 });
 

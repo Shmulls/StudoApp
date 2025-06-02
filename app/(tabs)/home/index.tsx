@@ -24,7 +24,7 @@ const HomeScreen = () => {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("");
   const [tab, setTab] = useState<"new" | "assigned" | "complete">("new");
-  const [selectedDate, setSelectedDate] = useState<string | null>(null); // New state
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const {
@@ -45,7 +45,7 @@ const HomeScreen = () => {
   const assignedTasks = visibleTasks.filter((t) => t.signedUp);
   const completedTasks = tasks.filter((t) => t.completed);
 
-  // Build period marking for tasks (example: each task is a period of 1 day)
+  // Build period marking for tasks
   const markedDates = tasks.reduce((acc, task) => {
     if (task.time) {
       const dateObj = new Date(task.time);
@@ -92,113 +92,240 @@ const HomeScreen = () => {
     setRefreshing(false);
   };
 
+  const getTabData = () => {
+    switch (tab) {
+      case "new":
+        return newTasks;
+      case "assigned":
+        return assignedTasks;
+      case "complete":
+        return completedTasks;
+      default:
+        return [];
+    }
+  };
+
+  const getEmptyMessage = () => {
+    switch (tab) {
+      case "new":
+        return "No new tasks available.";
+      case "assigned":
+        return "No assigned tasks.";
+      case "complete":
+        return "No completed tasks.";
+      default:
+        return "No tasks available.";
+    }
+  };
+
+  const getEmptyIcon = () => {
+    switch (tab) {
+      case "new":
+        return "add-circle-outline";
+      case "assigned":
+        return "person-outline";
+      case "complete":
+        return "checkmark-done-outline";
+      default:
+        return "list-outline";
+    }
+  };
+
   return (
     <View style={styles.container}>
       {loading && !modalVisible && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#0000ff" />
+          <ActivityIndicator size="large" color="#FF9800" />
         </View>
       )}
 
-      {/* Header Section - always visible */}
+      {/* Modern Header Section */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push("/profile")}>
-          <Image source={{ uri: user?.imageUrl }} style={styles.profileImage} />
-        </TouchableOpacity>
-        <View style={styles.headerIcons}>
-          <TouchableOpacity onPress={() => router.push("/notification")}>
-            <Ionicons
-              name="notifications-outline"
-              size={24}
-              color="#333"
-              style={styles.icon}
-            />
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => router.push("/profile")}>
+            <View style={styles.profileImageContainer}>
+              <Image
+                source={{ uri: user?.imageUrl }}
+                style={styles.profileImage}
+              />
+              <View style={styles.onlineIndicator} />
+            </View>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push("/settings")}>
-            <Ionicons
-              name="settings-outline"
-              size={24}
-              color="#333"
-              style={styles.icon}
-            />
+          <View style={styles.headerText}>
+            <Text style={styles.welcomeText}>Welcome Back 👋</Text>
+            <Text style={styles.userName}>{user?.firstName}!</Text>
+          </View>
+        </View>
+        <View style={styles.headerIcons}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => router.push("/notification")}
+          >
+            <Ionicons name="notifications-outline" size={22} color="#333" />
+            <View style={styles.notificationBadge} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => router.push("/settings")}
+          >
+            <Ionicons name="settings-outline" size={22} color="#333" />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Welcome Section - always visible */}
-      <Text style={styles.welcomeText}>
-        Welcome Back, <Text style={styles.bold}>{user?.firstName}</Text>!{" "}
-        <Text style={{ color: "#FF9800" }}>🧡</Text>
-      </Text>
-
-      {/* Milestone Progress Bar - always visible */}
-      <MilestoneProgressBar completed={completedCount} total={totalCount} />
-
-      {/* Tabs for New, Assigned, Complete - always visible */}
-      <View style={styles.tabRow}>
-        <TouchableOpacity
-          onPress={() => setTab("new")}
-          style={[styles.tab, tab === "new" && styles.tabActive]}
-        >
-          <Text style={[styles.tabText, tab === "new" && styles.tabTextActive]}>
-            New
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setTab("assigned")}
-          style={[styles.tab, tab === "assigned" && styles.tabActive]}
-        >
-          <Text
-            style={[styles.tabText, tab === "assigned" && styles.tabTextActive]}
-          >
-            Assigned
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setTab("complete")}
-          style={[styles.tab, tab === "complete" && styles.tabActive]}
-        >
-          <Text
-            style={[styles.tabText, tab === "complete" && styles.tabTextActive]}
-          >
-            Complete
-          </Text>
-        </TouchableOpacity>
+      {/* Progress Section */}
+      <View style={styles.progressSection}>
+        <Text style={styles.sectionTitle}>Your Progress</Text>
+        <View style={styles.progressCard}>
+          <MilestoneProgressBar completed={completedCount} total={totalCount} />
+          <View style={styles.progressStats}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{completedCount}</Text>
+              <Text style={styles.statLabel}>Completed</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>
+                {totalCount - completedCount}
+              </Text>
+              <Text style={styles.statLabel}>Remaining</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>
+                {totalCount > 0
+                  ? Math.round((completedCount / totalCount) * 100)
+                  : 0}
+                %
+              </Text>
+              <Text style={styles.statLabel}>Success Rate</Text>
+            </View>
+          </View>
+        </View>
       </View>
 
-      {/* Task Section */}
-      <FlatList
-        data={
-          tab === "new"
-            ? newTasks
+      {/* Modern Tab Navigation */}
+      <View style={styles.modernTabContainer}>
+        <View style={styles.tabRow}>
+          <TouchableOpacity
+            onPress={() => setTab("new")}
+            style={[styles.tab, tab === "new" && styles.tabActive]}
+          >
+            <View style={styles.tabContent}>
+              <Ionicons
+                name="add-circle-outline"
+                size={18}
+                color={tab === "new" ? "#fff" : "#666"}
+              />
+              <Text
+                style={[styles.tabText, tab === "new" && styles.tabTextActive]}
+              >
+                New
+              </Text>
+              {newTasks.length > 0 && (
+                <View style={styles.tabBadge}>
+                  <Text style={styles.tabBadgeText}>{newTasks.length}</Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setTab("assigned")}
+            style={[styles.tab, tab === "assigned" && styles.tabActive]}
+          >
+            <View style={styles.tabContent}>
+              <Ionicons
+                name="person-outline"
+                size={18}
+                color={tab === "assigned" ? "#fff" : "#666"}
+              />
+              <Text
+                style={[
+                  styles.tabText,
+                  tab === "assigned" && styles.tabTextActive,
+                ]}
+              >
+                Assigned
+              </Text>
+              {assignedTasks.length > 0 && (
+                <View style={styles.tabBadge}>
+                  <Text style={styles.tabBadgeText}>
+                    {assignedTasks.length}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setTab("complete")}
+            style={[styles.tab, tab === "complete" && styles.tabActive]}
+          >
+            <View style={styles.tabContent}>
+              <Ionicons
+                name="checkmark-done-outline"
+                size={18}
+                color={tab === "complete" ? "#fff" : "#666"}
+              />
+              <Text
+                style={[
+                  styles.tabText,
+                  tab === "complete" && styles.tabTextActive,
+                ]}
+              >
+                Complete
+              </Text>
+              {completedTasks.length > 0 && (
+                <View style={styles.tabBadge}>
+                  <Text style={styles.tabBadgeText}>
+                    {completedTasks.length}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Tasks Section */}
+      <View style={styles.tasksSection}>
+        <Text style={styles.sectionTitle}>
+          {tab === "new"
+            ? "New Tasks"
             : tab === "assigned"
-            ? assignedTasks
-            : completedTasks
-        }
-        keyExtractor={(item) => item._id}
-        renderItem={({ item }) =>
-          tab === "complete" ? (
-            <CompletedTaskCard task={item} />
-          ) : (
-            <TaskCard
-              task={item}
-              onSignUp={handleSignUp}
-              onComplete={onComplete}
-            />
-          )
-        }
-        ListEmptyComponent={
-          <Text style={{ textAlign: "center", color: "#888", marginTop: 20 }}>
-            {tab === "new"
-              ? "No new tasks available."
-              : tab === "assigned"
-              ? "No assigned tasks."
-              : "No completed tasks."}
-          </Text>
-        }
-        refreshing={refreshing}
-        onRefresh={onRefresh}
-      />
+            ? "Your Tasks"
+            : "Completed Tasks"}
+        </Text>
+        <FlatList
+          data={getTabData()}
+          keyExtractor={(item) => item._id}
+          renderItem={({ item }) =>
+            tab === "complete" ? (
+              <CompletedTaskCard task={item} />
+            ) : (
+              <TaskCard
+                task={item}
+                onSignUp={handleSignUp}
+                onComplete={onComplete}
+              />
+            )
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Ionicons name={getEmptyIcon() as any} size={64} color="#ddd" />
+              <Text style={styles.emptyStateTitle}>
+                {tab === "new"
+                  ? "No New Tasks"
+                  : tab === "assigned"
+                  ? "No Assigned Tasks"
+                  : "No Completed Tasks"}
+              </Text>
+              <Text style={styles.emptyStateSubtitle}>{getEmptyMessage()}</Text>
+            </View>
+          }
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+        />
+      </View>
 
       <FeedbackModal
         visible={modalVisible}
@@ -209,11 +336,12 @@ const HomeScreen = () => {
         loading={loading}
       />
 
-      {/* Display selected date */}
       {selectedDate && (
-        <Text style={{ textAlign: "center", marginTop: 10 }}>
-          Selected date: {selectedDate}
-        </Text>
+        <View style={styles.selectedDateContainer}>
+          <Text style={styles.selectedDateText}>
+            Selected date: {selectedDate}
+          </Text>
+        </View>
       )}
     </View>
   );
@@ -224,65 +352,220 @@ export default HomeScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9CE60",
-    padding: 20,
+    backgroundColor: "#f8f9fa",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 10,
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  profileImageContainer: {
+    position: "relative",
   },
   profileImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 40,
-    marginTop: 45,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#f0f0f0",
+  },
+  onlineIndicator: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#4CAF50",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  headerText: {
+    marginLeft: 12,
+  },
+  welcomeText: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500",
+  },
+  userName: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#222",
+    marginTop: 2,
   },
   headerIcons: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 60,
   },
-  icon: {
-    marginLeft: 20,
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f8f9fa",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 8,
+    position: "relative",
   },
-  welcomeText: {
-    fontSize: 18,
-    fontWeight: "500",
-    marginBottom: 10,
-    marginTop: 10,
-    color: "#222",
+  notificationBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#ff4757",
   },
-  bold: {
+  progressSection: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 20, // Add bottom padding to prevent overlap
+  },
+  sectionTitle: {
+    fontSize: 20,
     fontWeight: "bold",
     color: "#222",
+    marginBottom: 12,
+  },
+  progressCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+    marginBottom: 8, // Add margin to separate from tabs
+  },
+  progressStats: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginTop: 16,
+  },
+  statItem: {
+    alignItems: "center",
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#FF9800",
+  },
+  statLabel: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 4,
+  },
+  modernTabContainer: {
+    backgroundColor: "#fff",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingTop: 8, // Reduce top padding to prevent overlap
   },
   tabRow: {
     flexDirection: "row",
-    justifyContent: "space-around",
-    marginVertical: 14,
-    backgroundColor: "#fff",
-    borderRadius: 8,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 12,
     padding: 4,
-    elevation: 1,
   },
   tab: {
     flex: 1,
-    alignItems: "center",
-    paddingVertical: 8,
     borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    marginHorizontal: 2,
   },
   tabActive: {
-    backgroundColor: "#FAD961",
+    backgroundColor: "#FF9800",
+    shadowColor: "#FF9800",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  tabContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    minHeight: 24,
   },
   tabText: {
-    color: "#888",
-    fontWeight: "bold",
-    fontSize: 15,
+    color: "#666",
+    fontWeight: "600",
+    fontSize: 13,
+    marginLeft: 4,
+    textAlign: "center",
   },
   tabTextActive: {
+    color: "#fff",
+  },
+  tabBadge: {
+    position: "absolute",
+    top: -12,
+    right: -6,
+    backgroundColor: "#ff4757",
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+    zIndex: 10,
+  },
+  tabBadgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+  tasksSection: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 12, // Reduce top padding
+  },
+  listContent: {
+    paddingBottom: 40,
+  },
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
     color: "#222",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyStateSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    paddingHorizontal: 40,
+  },
+  selectedDateContainer: {
+    backgroundColor: "#fff",
+    padding: 12,
+    margin: 20,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  selectedDateText: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500",
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
