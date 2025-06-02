@@ -12,25 +12,44 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { goHome } from "../../../utils/navigation"; // adjust path as needed
 
 const ProfileScreen = () => {
   const { user } = useUser();
-  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editingField, setEditingField] = useState<
+    keyof typeof fieldValues | "password" | null
+  >(null);
   const [fieldValues, setFieldValues] = useState({
-    phoneNumber: user?.unsafeMetadata?.phoneNumber || "",
-    age: user?.unsafeMetadata?.age || "",
-    institution: user?.unsafeMetadata?.institution || "",
-    degree: user?.unsafeMetadata?.degree || "",
-    yearOfStudy: user?.unsafeMetadata?.yearOfStudy || "",
+    phoneNumber:
+      typeof user?.unsafeMetadata?.phoneNumber === "string"
+        ? user.unsafeMetadata.phoneNumber
+        : "",
+    age:
+      typeof user?.unsafeMetadata?.age === "string"
+        ? user.unsafeMetadata.age
+        : "",
+    institution:
+      typeof user?.unsafeMetadata?.institution === "string"
+        ? user.unsafeMetadata.institution
+        : "",
+    degree:
+      typeof user?.unsafeMetadata?.degree === "string"
+        ? user.unsafeMetadata.degree
+        : "",
+    yearOfStudy:
+      typeof user?.unsafeMetadata?.yearOfStudy === "string"
+        ? user.unsafeMetadata.yearOfStudy
+        : "",
   });
   const [passwordFields, setPasswordFields] = useState({
+    currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<boolean>(false);
 
-  const handleSave = async (field: string) => {
+  const handleSave = async (field: keyof typeof fieldValues) => {
     try {
       await user?.update({
         unsafeMetadata: {
@@ -51,10 +70,17 @@ const ProfileScreen = () => {
     }
 
     try {
-      await user?.updatePassword({ password: passwordFields.newPassword });
+      await user?.updatePassword({
+        currentPassword: passwordFields.currentPassword,
+        newPassword: passwordFields.newPassword,
+      });
       setPasswordError(null);
       setPasswordSuccess(true);
-      setPasswordFields({ newPassword: "", confirmPassword: "" });
+      setPasswordFields({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
       setEditingField(null);
     } catch (error) {
       console.error("Error changing password:", error);
@@ -81,18 +107,10 @@ const ProfileScreen = () => {
 
       if (!result.canceled) {
         const selectedAsset = result.assets[0];
+        const response = await fetch(selectedAsset.uri);
+        const blob = await response.blob();
 
-        const formData = new FormData();
-        formData.append("file", {
-          uri: selectedAsset.uri,
-          name: "profile-image.jpg",
-          type: "image/jpeg",
-        });
-
-        await user?.setProfileImage({
-          file: formData.get("file"),
-        });
-
+        await user?.setProfileImage({ file: blob });
         await user?.reload();
       }
     } catch (error) {
@@ -140,6 +158,17 @@ const ProfileScreen = () => {
       <Text style={styles.fieldLabel}>Password Change</Text>
       {editingField === "password" ? (
         <View style={styles.passwordBox}>
+          {/* Current Password */}
+          <TextInput
+            style={styles.passwordInput}
+            placeholder="Current password"
+            secureTextEntry
+            value={passwordFields.currentPassword}
+            onChangeText={(text) =>
+              setPasswordFields((prev) => ({ ...prev, currentPassword: text }))
+            }
+          />
+
           {/* Enter New Password */}
           <TextInput
             style={styles.passwordInput}
@@ -183,7 +212,11 @@ const ProfileScreen = () => {
             <TouchableOpacity
               onPress={() => {
                 setEditingField(null);
-                setPasswordFields({ newPassword: "", confirmPassword: "" });
+                setPasswordFields({
+                  currentPassword: "",
+                  newPassword: "",
+                  confirmPassword: "",
+                });
                 setPasswordError(null);
               }}
             >
@@ -226,9 +259,9 @@ const ProfileScreen = () => {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.push("/(tabs)/home")}
+          onPress={() => goHome(user)}
         >
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="home" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit Profile</Text>
       </View>

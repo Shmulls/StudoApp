@@ -222,7 +222,7 @@ const Organization = () => {
     <View style={styles.container}>
       {/* Header Section */}
       <View style={styles.header}>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push("/profile")}>
           <Image source={{ uri: user?.imageUrl }} style={styles.profileImage} />
         </TouchableOpacity>
         <View style={styles.headerIcons}>
@@ -236,9 +236,7 @@ const Organization = () => {
             />
           </TouchableOpacity>
           {/* Settings Icon */}
-          <TouchableOpacity
-            onPress={() => router.push("/organization-settings")}
-          >
+          <TouchableOpacity onPress={() => router.push("/settings")}>
             <Ionicons
               name="settings-outline"
               size={24}

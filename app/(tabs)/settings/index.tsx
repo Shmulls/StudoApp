@@ -1,7 +1,6 @@
-import { useClerk } from "@clerk/clerk-expo";
+import { useAuth, useUser } from "@clerk/clerk-expo";
 import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import * as Linking from "expo-linking";
-import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   Modal,
@@ -13,6 +12,7 @@ import {
   View,
 } from "react-native";
 import QRCode from "react-native-qrcode-svg";
+import { goHome } from "../../../utils/navigation"; // adjust path as needed
 
 const APP_DOWNLOAD_LINK = "https://your-app-download-link.com"; // Replace with your real link
 
@@ -38,7 +38,8 @@ If you have questions, contact us at support@studoapp.com.
 `;
 
 const SettingsScreen = () => {
-  const { signOut, user } = useClerk();
+  const { user } = useUser();
+  const { signOut } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [qrVisible, setQrVisible] = useState(false);
   const [termsVisible, setTermsVisible] = useState(false);
@@ -48,7 +49,7 @@ const SettingsScreen = () => {
       {/* Header Section */}
       <View style={styles.header}>
         <View style={styles.headerIcons}>
-          <TouchableOpacity onPress={() => router.push("/home")}>
+          <TouchableOpacity onPress={() => goHome(user)}>
             <Ionicons name="home" size={24} color="#333" style={styles.icon} />
           </TouchableOpacity>
         </View>

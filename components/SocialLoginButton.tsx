@@ -35,7 +35,7 @@ const SocialLoginButton = ({
     try {
       setIsLoading(true);
       const { createdSessionId, setActive } = await startOAuthFlow({
-        redirectUrl: Linking.createURL("/dashboard", { scheme: "myapp" }),
+        redirectUrl: Linking.createURL("/home", { scheme: "myapp" }), // Changed this line
       });
 
       if (createdSessionId) {
