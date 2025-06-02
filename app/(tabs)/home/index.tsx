@@ -5,7 +5,6 @@ import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Image,
   StyleSheet,
@@ -13,16 +12,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import FeedbackModal from "../../../components/FeedbackModal";
 import MilestoneProgressBar from "../../../components/MilestoneProgressBar";
 import TaskCard from "../../../components/TaskCard";
 import { useTasks } from "../../../hooks/useTasks";
 
 const HomeScreen = () => {
   const { user } = useUser();
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState("");
   const [tab, setTab] = useState<"new" | "assigned" | "complete">("new");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -34,11 +29,12 @@ const HomeScreen = () => {
     handleSignUp,
     handleComplete,
     fetchTasks,
+    setTasks, // Add setTasks to update local task state
   } = useTasks(user);
 
-  // Progress bar data
-  const completedCount = tasks.filter((t) => t.completed).length;
-  const totalCount = tasks.length;
+  // Progress bar data - now using points instead of task count
+  const userPoints = tasks.filter((t) => t.completed).length; // Each completed task = 1 point
+  const maxPoints = 120; // Goal
 
   // Task filters for tabs
   const newTasks = visibleTasks.filter((t) => !t.signedUp);
@@ -61,23 +57,6 @@ const HomeScreen = () => {
     }
     return acc;
   }, {} as Record<string, any>);
-
-  // Show feedback modal and handle feedback submission
-  const onComplete = (taskId: string) => {
-    setSelectedTaskId(taskId);
-    setModalVisible(true);
-  };
-
-  const submitFeedback = async () => {
-    if (!selectedTaskId) return;
-    const success = await handleComplete(selectedTaskId, feedback);
-    if (success) {
-      Alert.alert("Success", "Feedback submitted successfully!");
-    }
-    setModalVisible(false);
-    setFeedback("");
-    setSelectedTaskId(null);
-  };
 
   // Refetch tasks when the screen is focused
   useFocusEffect(
@@ -131,9 +110,33 @@ const HomeScreen = () => {
     }
   };
 
+  // Make sure your handlers are safe:
+  const handleCompleteTask = async (taskId: string) => {
+    try {
+      console.log("🏠 Home: Handling task completion for:", taskId);
+
+      // Remove task from local state
+      setTasks((prevTasks) => {
+        const filtered = prevTasks.filter((task) => task._id !== taskId);
+        console.log("📊 Tasks remaining:", filtered.length);
+        return filtered;
+      });
+
+      // Refresh after a short delay
+      setTimeout(() => {
+        console.log("🔄 Home: Refreshing task data...");
+        fetchTasks().catch((error) => {
+          console.error("⚠️ Home: Error refreshing tasks:", error);
+        });
+      }, 1000);
+    } catch (error) {
+      console.error("💥 Home: Error in handleCompleteTask:", error);
+    }
+  };
+
   return (
     <View style={styles.container}>
-      {loading && !modalVisible && (
+      {loading && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#FF9800" />
         </View>
@@ -177,26 +180,21 @@ const HomeScreen = () => {
       <View style={styles.progressSection}>
         <Text style={styles.sectionTitle}>Your Progress</Text>
         <View style={styles.progressCard}>
-          <MilestoneProgressBar completed={completedCount} total={totalCount} />
+          <MilestoneProgressBar points={userPoints} maxPoints={maxPoints} />
           <View style={styles.progressStats}>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{completedCount}</Text>
-              <Text style={styles.statLabel}>Completed</Text>
+              <Text style={styles.statNumber}>{userPoints}</Text>
+              <Text style={styles.statLabel}>Points</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{maxPoints - userPoints}</Text>
+              <Text style={styles.statLabel}>To Goal</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>
-                {totalCount - completedCount}
+                {Math.round((userPoints / maxPoints) * 100)}%
               </Text>
-              <Text style={styles.statLabel}>Remaining</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>
-                {totalCount > 0
-                  ? Math.round((completedCount / totalCount) * 100)
-                  : 0}
-                %
-              </Text>
-              <Text style={styles.statLabel}>Success Rate</Text>
+              <Text style={styles.statLabel}>Progress</Text>
             </View>
           </View>
         </View>
@@ -227,6 +225,7 @@ const HomeScreen = () => {
               )}
             </View>
           </TouchableOpacity>
+
           <TouchableOpacity
             onPress={() => setTab("assigned")}
             style={[styles.tab, tab === "assigned" && styles.tabActive]}
@@ -254,6 +253,7 @@ const HomeScreen = () => {
               )}
             </View>
           </TouchableOpacity>
+
           <TouchableOpacity
             onPress={() => setTab("complete")}
             style={[styles.tab, tab === "complete" && styles.tabActive]}
@@ -303,7 +303,8 @@ const HomeScreen = () => {
               <TaskCard
                 task={item}
                 onSignUp={handleSignUp}
-                onComplete={onComplete}
+                onComplete={handleCompleteTask} // Use the new direct completion handler
+                onTaskUpdate={fetchTasks} // Add this to refresh the list
               />
             )
           }
@@ -326,16 +327,6 @@ const HomeScreen = () => {
           contentContainerStyle={styles.listContent}
         />
       </View>
-
-      <FeedbackModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        feedback={feedback}
-        setFeedback={setFeedback}
-        onSubmit={submitFeedback}
-        loading={loading}
-      />
-
       {selectedDate && (
         <View style={styles.selectedDateContainer}>
           <Text style={styles.selectedDateText}>

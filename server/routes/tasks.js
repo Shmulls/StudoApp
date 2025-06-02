@@ -19,18 +19,23 @@ router.get("/", async (req, res) => {
 // Create a new task
 router.post("/", async (req, res) => {
   try {
+    console.log("Task creation request body:", req.body); // Debug log
+
     // Ensure the time is a valid Date
     const taskData = {
       ...req.body,
       time: new Date(req.body.time), // Convert to Date object
+      createdBy: req.body.createdBy || req.body.userId || "unknown", // Better fallback handling
     };
+
+    console.log("Task data before saving:", taskData); // Debug log
 
     const task = new Task(taskData);
     const newTask = await task.save();
 
     console.log("Task created successfully:", newTask);
 
-    // Create a new notification
+    // Create a new notification for task creation (optional)
     const notification = new Notification({
       userId: "broadcast", // Use "broadcast" for system-wide notifications
       title: "New Task Added",
@@ -40,33 +45,30 @@ router.post("/", async (req, res) => {
 
     // Save the notification to the database
     const savedNotification = await notification.save();
-
-    // Debug log for notification creation
     console.log("Notification created successfully:", savedNotification);
 
     // Emit the notification using Socket.io
-    const io = req.app.get("io"); // Retrieve io instance from app
-    if (!io) {
-      console.error("Socket.io instance not found!");
-      return res.status(500).json({ message: "Socket.io not initialized" });
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("new-notification", {
+        _id: savedNotification._id,
+        title: savedNotification.title,
+        message: savedNotification.message,
+        createdAt: savedNotification.createdAt,
+      });
+
+      console.log("Emitted: New notification ->", {
+        title: savedNotification.title,
+        message: savedNotification.message,
+      });
     }
-
-    io.emit("new-notification", {
-      _id: savedNotification._id,
-      title: savedNotification.title,
-      message: savedNotification.message,
-      createdAt: savedNotification.createdAt,
-    });
-
-    console.log("Emitted: New notification ->", {
-      title: savedNotification.title,
-      message: savedNotification.message,
-    });
 
     res.status(201).json(newTask);
   } catch (error) {
     console.error("Error creating task:", error);
-    res.status(400).json({ message: "Error creating task" });
+    res
+      .status(400)
+      .json({ message: "Error creating task", error: error.message });
   }
 });
 
@@ -94,21 +96,37 @@ router.delete("/:id", async (req, res) => {
 
 // PATCH request to mark the task as completed
 router.patch("/:id/complete", async (req, res) => {
-  const { userId } = req.body; // Get userId from the request body
-  const { id } = req.params; // Get taskId from URL parameter
+  console.log("🔥 PATCH /complete route hit!");
+  console.log("Task ID:", req.params.id);
+  console.log("Request body:", req.body);
+
+  const { userId, feedback } = req.body;
+  const { id } = req.params;
 
   try {
     // Ensure that the taskId is a valid ObjectId before querying
     if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.log("❌ Invalid task ID:", id);
       return res.status(400).json({ message: "Invalid task ID" });
     }
 
     const task = await Task.findById(id);
+    console.log("📋 Found task:", task);
+
     if (!task) {
+      console.log("❌ Task not found with ID:", id);
       return res.status(404).json({ message: "Task not found" });
     }
 
-    // Create the completed task entry in the CompletedTasks collection
+    // 🎯 MARK THE ORIGINAL TASK AS COMPLETED 🎯
+    task.completed = true;
+    task.completedAt = new Date();
+    task.completedBy = userId;
+    await task.save();
+    console.log("✅ Original task marked as completed");
+
+    // Create the completed task entry (for detailed tracking)
+    console.log("💾 Creating completed task entry...");
     const completedTask = new CompletedTask({
       userId,
       taskId: task._id,
@@ -117,15 +135,74 @@ router.patch("/:id/complete", async (req, res) => {
       location: task.location,
       time: task.time,
       signedUp: task.signedUp,
+      feedback: feedback || null,
+      completedAt: new Date(),
     });
 
     await completedTask.save();
-    res
-      .status(200)
-      .json({ message: "Task marked as completed", completedTask });
+    console.log("✅ Completed task saved:", completedTask._id);
+
+    // 🎯 CREATE NOTIFICATION FOR TASK COMPLETION 🎯
+    console.log("🔍 Checking notification conditions:");
+    console.log("- task.createdBy:", task.createdBy);
+    console.log("- userId:", userId);
+    console.log("- createdBy !== userId:", task.createdBy !== userId);
+    console.log("- createdBy !== 'unknown':", task.createdBy !== "unknown");
+
+    if (
+      task.createdBy &&
+      task.createdBy !== userId &&
+      task.createdBy !== "unknown"
+    ) {
+      console.log("🔔 Creating notification...");
+
+      const notification = new Notification({
+        title: `Task "${task.title}" Completed`,
+        message: `A user has completed the task "${task.title}"${
+          feedback ? ` with feedback: ${feedback}` : "."
+        }`,
+        type: "task_completed",
+        userId: task.createdBy,
+        taskId: task._id,
+        completedBy: {
+          id: userId,
+          name: `User ${userId}`,
+          image: null,
+        },
+        read: false,
+      });
+
+      await notification.save();
+      console.log("🔔 Task completion notification created:", notification);
+
+      // Send real-time notification
+      const io = req.app.get("io");
+      if (io) {
+        io.to(`org_${task.createdBy}`).emit("new-notification", notification);
+        console.log(
+          `📡 Emitted completion notification to org_${task.createdBy}`
+        );
+      }
+    } else {
+      console.log("❌ No notification created - conditions not met");
+      console.log("   createdBy:", task.createdBy);
+      console.log("   userId:", userId);
+    }
+
+    res.status(200).json({
+      message: "Task marked as completed",
+      completedTask,
+      originalTask: task, // Include the updated original task
+      notificationSent:
+        task.createdBy &&
+        task.createdBy !== userId &&
+        task.createdBy !== "unknown",
+    });
   } catch (error) {
-    console.error("Error completing task:", error);
-    res.status(500).json({ message: "Error completing task" });
+    console.error("💥 Error completing task:", error);
+    res
+      .status(500)
+      .json({ message: "Error completing task", error: error.message });
   }
 });
 
