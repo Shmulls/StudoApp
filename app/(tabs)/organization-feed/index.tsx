@@ -236,7 +236,9 @@ const Organization = () => {
       {/* Modern Header Section */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => router.push("/profile")}>
+          <TouchableOpacity
+            onPress={() => router.push("/organization-profile")}
+          >
             <View style={styles.profileImageContainer}>
               <Image
                 source={{ uri: user?.imageUrl }}
