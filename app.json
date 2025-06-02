@@ -57,7 +57,7 @@
       "typedRoutes": true
     },
     "extra": {
-      "EXPO_PUBLIC_LOCATION_API_KEY": "",
+      "EXPO_PUBLIC_LOCATION_API_KEY": "AIzaSyAjyYxXChjy1vRsJqanVMJxjieY1cOCHLA",
       "router": {
         "origin": false
       },

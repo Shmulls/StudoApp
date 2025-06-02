@@ -1,7 +1,14 @@
-import React, { useState } from "react";
-import { Modal, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
+import React, { useCallback, useState } from "react";
+import {
+  FlatList,
+  Modal,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
+import { getLocationDetails, searchLocation } from "../services/locationApi";
 import MapPicker from "./MapPicker";
 
 type NewTask = {
@@ -23,6 +30,11 @@ type AddTaskModalProps = {
   styles: any;
 };
 
+type PlaceSuggestion = {
+  place_id: string;
+  description: string;
+};
+
 const AddTaskModal: React.FC<AddTaskModalProps> = ({
   visible,
   creating,
@@ -33,6 +45,50 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   styles,
 }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const buildRowsFromResults = useCallback((results: any[], text: string) => {
+    if (!Array.isArray(results)) return [];
+    // Example: return all results (no filtering)
+    return results;
+  }, []);
+
+  const handleSearch = async (text: string) => {
+    setQuery(text);
+    if (text.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const results = await searchLocation(text);
+      setSuggestions(results);
+    } catch (e) {
+      setSuggestions([]);
+    }
+    setLoading(false);
+  };
+
+  const handleSelect = async (item: PlaceSuggestion) => {
+    setQuery(item.description);
+    setSuggestions([]);
+    const details = await getLocationDetails(item.place_id);
+    if (details?.geometry?.location) {
+      setNewTask((t) => ({
+        ...t,
+        locationLabel: item.description,
+        location: {
+          type: "Point",
+          coordinates: [
+            details.geometry.location.lng,
+            details.geometry.location.lat,
+          ],
+        },
+      }));
+    }
+  };
 
   return (
     <Modal
@@ -84,27 +140,23 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
                 : null
             }
           />
-          <GooglePlacesAutocomplete
+          <TextInput
+            style={styles.input}
             placeholder="Search for a location"
-            fetchDetails={true}
-            onPress={(data, details = null) => {
-              if (details && details.geometry && details.geometry.location) {
-                const { lat, lng } = details.geometry.location;
-                setNewTask((t) => ({
-                  ...t,
-                  locationLabel: data.description,
-                  location: { type: "Point", coordinates: [lng, lat] },
-                }));
-              }
-            }}
-            query={{
-              key: process.env.EXPO_PUBLIC_LOCATION_API_KEY,
-              language: "en",
-            }}
-            styles={{
-              textInput: styles.input,
-              container: { flex: 0, marginBottom: 10 },
-            }}
+            value={query}
+            onChangeText={handleSearch}
+          />
+          {loading && <Text>Loading...</Text>}
+          <FlatList
+            data={suggestions}
+            keyExtractor={(item) => item.place_id}
+            renderItem={({ item }) => (
+              <TouchableOpacity onPress={() => handleSelect(item)}>
+                <Text style={{ padding: 10 }}>{item.description}</Text>
+              </TouchableOpacity>
+            )}
+            style={{ maxHeight: 120 }}
+            keyboardShouldPersistTaps="handled"
           />
           <TouchableOpacity
             style={styles.input}
