@@ -154,7 +154,7 @@ export default AuthScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9CE60", // Yellow background
+    backgroundColor: "#F9CE60",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 20,

@@ -81,7 +81,7 @@ export default NotificationsScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAD961",
+    backgroundColor: "#F9CE60",
     padding: 20,
     paddingTop: 80,
   },

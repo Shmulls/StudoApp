@@ -334,7 +334,7 @@ export default ProfileScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAD961",
+    backgroundColor: "#F9CE60",
     padding: 20,
     paddingTop: 70,
   },
@@ -430,7 +430,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     shadowColor: "#000",
     shadowOpacity: 0.1,
-    elevation: 5,
   },
   passwordInput: {
     width: "100%",

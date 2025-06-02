@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#FAD961",
+    backgroundColor: "#F9CE60",
     padding: 20,
   },
   input: {

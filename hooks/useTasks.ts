@@ -1,5 +1,9 @@
-import { useEffect, useState } from "react";
-import { addCompletedTask, fetchTasks, updateTask } from "../api";
+import { useCallback, useEffect, useState } from "react";
+import {
+  addCompletedTask,
+  fetchTasks as fetchTasksApi,
+  updateTask,
+} from "../api";
 import { Task } from "../types/task";
 import { addTaskToCalendar } from "../utils/calendarUtils";
 
@@ -7,18 +11,20 @@ export function useTasks(user: any) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch tasks from the backend
-  useEffect(() => {
-    const getTasks = async () => {
-      try {
-        const { data } = await fetchTasks();
-        setTasks(data);
-      } catch (error) {
-        console.error("Error fetching tasks:", error);
-      }
-    };
-    getTasks();
+  const fetchTasks = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await fetchTasksApi();
+      setTasks(data);
+    } catch (e) {
+      console.error("Error fetching tasks:", e);
+    }
+    setLoading(false);
   }, []);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
 
   // Sign up for a task
   const handleSignUp = async (taskId: string) => {
@@ -96,5 +102,6 @@ export function useTasks(user: any) {
     loading,
     handleSignUp,
     handleComplete,
+    fetchTasks,
   };
 }

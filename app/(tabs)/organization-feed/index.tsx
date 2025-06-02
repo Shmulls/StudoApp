@@ -17,7 +17,7 @@ import {
 import "react-native-get-random-values";
 import { createTask, deleteTask, fetchTasks, updateTask } from "../../../api";
 import AddTaskModal from "../../../components/AddTaskModal";
-import ChartStats from "../../../components/CharStats";
+import OrgStatistics from "../../../components/OrgStatistics";
 import { Task } from "../../../types/task";
 
 // const LOCATION_API_KEY = "AIzaSyAjyYxXChjy1vRsJqanVMJxjieY1cOCHLA";
@@ -49,7 +49,7 @@ const Organization = () => {
   const [orgTab, setOrgTab] = useState<"pending" | "completed" | "statistics">(
     "pending"
   );
-  const [tab, setTab] = useState<"year" | "month">("year");
+  const [tab, setTab] = useState<"day" | "week" | "month" | "year">("year");
   const closedTasksRef = useRef<LottieView>(null);
   const openTasksRef = useRef<LottieView>(null);
   const [userModalVisible, setUserModalVisible] = useState(false);
@@ -65,6 +65,8 @@ const Organization = () => {
     x: number;
     y: number;
   }>({ x: 0, y: 0 });
+
+  const [refreshing, setRefreshing] = useState(false);
 
   const POPUP_WIDTH = 200;
   const screenWidth = Dimensions.get("window").width;
@@ -208,6 +210,17 @@ const Organization = () => {
     } catch (error) {
       alert("Failed to delete task.");
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const { data } = await fetchTasks();
+      setTasks(data);
+    } catch (error) {
+      console.error("Error refreshing tasks:", error);
+    }
+    setRefreshing(false);
   };
 
   if (!isLoaded) {
@@ -386,6 +399,8 @@ const Organization = () => {
                 No pending tasks.
               </Text>
             }
+            refreshing={refreshing}
+            onRefresh={onRefresh}
           />
         </>
       )}
@@ -443,15 +458,16 @@ const Organization = () => {
       )}
 
       {orgTab === "statistics" && (
-        <ChartStats
+        <OrgStatistics
           open={openCount}
           closed={closedCount}
-          total={total}
-          percent={percent}
-          chartData={tab === "year" ? yearChartData : monthChartData}
-          chartLabels={tab === "year" ? yearChartLabels : monthChartLabels}
+          percent={Math.round(
+            (closedCount / (openCount + closedCount || 1)) * 100
+          )}
+          chartData={getChartData(tab, tasks, user)} // see below
+          chartLabels={getChartLabels(tab)}
           tab={tab}
-          onTab={(tab) => setTab(tab as "year" | "month")}
+          onTab={setTab}
         />
       )}
 
@@ -587,7 +603,7 @@ const styles = StyleSheet.create({
     // borderColor: "#525252", // Add black border
     padding: 18,
     marginBottom: 18,
-    backgroundColor: "#F9CE60",
+    // backgroundColor: "#F9CE60",
     minHeight: 120,
     borderRadius: 16,
     // Shadow for iOS
@@ -596,7 +612,17 @@ const styles = StyleSheet.create({
     // shadowOpacity: 0.18,
     // shadowRadius: 8,
     // Shadow for Android
-    elevation: 2,
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
+    // borderColor: "#000",
+    // borderRadius: 15,
+    // padding: 15,
+    // marginBottom: 15,
+    // shadowColor: "#fff",
+    // shadowOpacity: 2,
+    // shadowRadius: 5,
+    // flexDirection: "row",
+    // justifyContent: "space-between",
+    // alignItems: "center",
   },
   taskCardActive: {
     borderColor: "#000",
@@ -901,3 +927,33 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
 });
+
+function getChartLabels(tab: "day" | "week" | "month" | "year") {
+  const now = new Date();
+  if (tab === "year") {
+    const year = now.getFullYear();
+    return Array.from({ length: 5 }, (_, i) => (year - 4 + i).toString());
+  }
+  return [];
+}
+
+function getChartData(
+  tab: "day" | "week" | "month" | "year",
+  tasks: Task[],
+  user: any
+) {
+  const now = new Date();
+  if (tab === "year") {
+    const arr = Array(5).fill(0);
+    const year = now.getFullYear();
+    tasks.forEach((task) => {
+      const d = new Date(task.time);
+      if (task.createdBy === user.id) {
+        const idx = d.getFullYear() - (year - 4);
+        if (idx >= 0 && idx < 5) arr[idx]++;
+      }
+    });
+    return arr;
+  }
+  return [];
+}

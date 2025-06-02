@@ -170,7 +170,7 @@ export default SettingsScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAD961",
+    backgroundColor: "#F9CE60",
     padding: 20,
   },
   header: {
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    marginTop: 10, // Optional: adjust as needed for a little space
+    marginTop: 10,
     width: "100%",
   },
   settingRow: {

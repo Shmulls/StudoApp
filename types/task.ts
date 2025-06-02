@@ -6,10 +6,11 @@ export interface Task {
     type: "Point";
     coordinates: [number, number];
   } | null;
-  locationLabel?: string;
+  locationLabel: string;
   time: string;
   signedUp: boolean;
-  completed?: boolean;
+  completed: boolean;
+  createdBy: string;
   assignedUserId?: string | null;
   assignedUserName?: string | null;
   assignedUserImage?: string | null;

@@ -1,8 +1,8 @@
 import CompletedTaskCard from "@/components/CompletedTaskCard";
 import { useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React, { useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -25,9 +25,16 @@ const HomeScreen = () => {
   const [feedback, setFeedback] = useState("");
   const [tab, setTab] = useState<"new" | "assigned" | "complete">("new");
   const [selectedDate, setSelectedDate] = useState<string | null>(null); // New state
+  const [refreshing, setRefreshing] = useState(false);
 
-  const { tasks, visibleTasks, loading, handleSignUp, handleComplete } =
-    useTasks(user);
+  const {
+    tasks,
+    visibleTasks,
+    loading,
+    handleSignUp,
+    handleComplete,
+    fetchTasks,
+  } = useTasks(user);
 
   // Progress bar data
   const completedCount = tasks.filter((t) => t.completed).length;
@@ -70,6 +77,19 @@ const HomeScreen = () => {
     setModalVisible(false);
     setFeedback("");
     setSelectedTaskId(null);
+  };
+
+  // Refetch tasks when the screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      fetchTasks();
+    }, [fetchTasks])
+  );
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchTasks();
+    setRefreshing(false);
   };
 
   return (
@@ -153,7 +173,7 @@ const HomeScreen = () => {
             ? newTasks
             : tab === "assigned"
             ? assignedTasks
-            : completedTasks // Show completed tasks for the "Complete" tab
+            : completedTasks
         }
         keyExtractor={(item) => item._id}
         renderItem={({ item }) =>
@@ -176,6 +196,8 @@ const HomeScreen = () => {
               : "No completed tasks."}
           </Text>
         }
+        refreshing={refreshing}
+        onRefresh={onRefresh}
       />
 
       <FeedbackModal
@@ -202,7 +224,7 @@ export default HomeScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAD961",
+    backgroundColor: "#F9CE60",
     padding: 20,
   },
   header: {
