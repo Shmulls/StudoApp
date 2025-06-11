@@ -1,7 +1,7 @@
-import Clipboard from "@react-native-clipboard/clipboard";
 import React from "react";
 import {
   Alert,
+  Clipboard,
   Dimensions,
   ScrollView,
   StyleSheet,
