@@ -34,7 +34,11 @@ export const addTaskToCalendar = async (task: Task) => {
       startDate,
       endDate,
       timeZone: "GMT",
-      location: task.location,
+      location: task.location
+        ? typeof task.location === "string"
+          ? task.location
+          : `(${task.location.coordinates[0]}, ${task.location.coordinates[1]})`
+        : undefined,
       notes: task.description,
     });
 

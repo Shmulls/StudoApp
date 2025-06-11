@@ -1,5 +1,7 @@
+import Clipboard from "@react-native-clipboard/clipboard";
 import React from "react";
 import {
+  Alert,
   Dimensions,
   ScrollView,
   StyleSheet,
@@ -89,6 +91,112 @@ const OrgStatistics: React.FC<OrgStatisticsProps> = ({
     }
   };
 
+  const exportStatistics = async () => {
+    try {
+      const statsData = {
+        exportDate: new Date().toISOString(),
+        period: tab,
+        summary: {
+          openTasks: open,
+          closedTasks: closed,
+          completionPercent: percent,
+          totalTasks: open + closed,
+          overdueTasks: overdueTasks,
+          averageCompletionTime: averageCompletionTime,
+          successRate:
+            open + closed > 0
+              ? Math.round((closed / (open + closed)) * 100)
+              : 0,
+        },
+        chartData: {
+          labels: chartLabels,
+          values: chartData,
+        },
+        insights: {
+          peakActivity: Math.max(...safeChartData),
+          averagePerPeriod: (
+            safeChartData.reduce((a, b) => a + b, 0) / safeChartData.length
+          ).toFixed(1),
+          mostActive:
+            tab === "day"
+              ? "Afternoon"
+              : tab === "week"
+              ? "Weekdays"
+              : tab === "month"
+              ? "Mid-month"
+              : "Recent Years",
+        },
+      };
+
+      const csvContent = generateCSV(statsData);
+      const jsonContent = JSON.stringify(statsData, null, 2);
+
+      // Show export options
+      Alert.alert("Export Statistics", "Choose export format:", [
+        {
+          text: "Copy CSV",
+          onPress: () => copyToClipboard(csvContent, "CSV"),
+        },
+        {
+          text: "Copy JSON",
+          onPress: () => copyToClipboard(jsonContent, "JSON"),
+        },
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+      ]);
+    } catch (error) {
+      Alert.alert("Export Error", "Failed to export statistics");
+    }
+  };
+
+  const generateCSV = (data: any) => {
+    const headers = "Metric,Value\n";
+    const summaryData = [
+      `Export Date,${new Date(data.exportDate).toLocaleDateString()}`,
+      `Period,${data.period}`,
+      `Open Tasks,${data.summary.openTasks}`,
+      `Closed Tasks,${data.summary.closedTasks}`,
+      `Completion Percent,${data.summary.completionPercent}%`,
+      `Total Tasks,${data.summary.totalTasks}`,
+      `Overdue Tasks,${data.summary.overdueTasks}`,
+      `Average Completion Time,${data.summary.averageCompletionTime}h`,
+      `Success Rate,${data.summary.successRate}%`,
+      `Peak Activity,${data.insights.peakActivity}`,
+      `Average Per Period,${data.insights.averagePerPeriod}`,
+      `Most Active,${data.insights.mostActive}`,
+    ].join("\n");
+
+    const chartHeaders = "\n\nChart Data\nLabel,Value\n";
+    const chartData = data.chartData.labels
+      .map(
+        (label: string, index: number) =>
+          `${label},${data.chartData.values[index] || 0}`
+      )
+      .join("\n");
+
+    return headers + summaryData + chartHeaders + chartData;
+  };
+
+  const copyToClipboard = async (content: string, format: string) => {
+    try {
+      await Clipboard.setString(content);
+      Alert.alert(
+        "Copied!",
+        `${format} data has been copied to clipboard. You can paste it into any spreadsheet app, email, or document.`,
+        [
+          {
+            text: "OK",
+            style: "default",
+          },
+        ]
+      );
+    } catch (error) {
+      Alert.alert("Error", "Failed to copy to clipboard");
+    }
+  };
+
   return (
     <ScrollView
       style={styles.container}
@@ -96,6 +204,14 @@ const OrgStatistics: React.FC<OrgStatisticsProps> = ({
       contentContainerStyle={styles.scrollContent}
     >
       <View style={[styles.card, { width: CARD_WIDTH }]}>
+        {/* Export Button */}
+        <TouchableOpacity
+          style={styles.exportButton}
+          onPress={exportStatistics}
+        >
+          <Text style={styles.exportButtonText}>📊 Export Statistics</Text>
+        </TouchableOpacity>
+
         {/* Progress Overview */}
         <Text style={styles.sectionTitle}>Progress Overview</Text>
         <View style={styles.progressRow}>
@@ -452,6 +568,24 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#2196F3",
     textAlign: "center",
+  },
+  exportButton: {
+    backgroundColor: "#4CAF50",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginBottom: 16,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  exportButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
 

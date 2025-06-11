@@ -1,6 +1,7 @@
 export default {
   expo: {
     // ...other config...
+    plugins: ["expo-asset"],
     extra: {
       EXPO_PUBLIC_LOCATION_API_KEY: "AIzaSyAjyYxXChjy1vRsJqanVMJxjieY1cOCHLA",
       eas: {
