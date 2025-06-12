@@ -21,6 +21,9 @@ const HomeScreen = () => {
   const [tab, setTab] = useState<"new" | "assigned" | "complete">("new");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [filter, setFilter] = useState<"newest" | "oldest" | "location">(
+    "newest"
+  );
 
   const {
     tasks,
@@ -72,16 +75,53 @@ const HomeScreen = () => {
   };
 
   const getTabData = () => {
+    let data: typeof tasks = [];
     switch (tab) {
       case "new":
-        return newTasks;
+        data = newTasks;
+        break;
       case "assigned":
-        return assignedTasks;
+        data = assignedTasks;
+        break;
       case "complete":
-        return completedTasks;
+        data = completedTasks;
+        break;
       default:
-        return [];
+        data = [];
     }
+
+    // Apply filter
+    if (filter === "newest") {
+      return [...data].sort(
+        (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()
+      );
+    }
+    if (filter === "oldest") {
+      return [...data].sort(
+        (a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()
+      );
+    }
+    if (filter === "location") {
+      // Sort alphabetically by location (string or object with address)
+      return [...data].sort((a, b) => {
+        const getLocationString = (loc: any) => {
+          if (loc && typeof loc === "object") {
+            if ("address" in loc && typeof loc.address === "string") {
+              return loc.address;
+            }
+            // If it's a Point object, convert coordinates to string
+            if (loc.type === "Point" && Array.isArray(loc.coordinates)) {
+              return loc.coordinates.join(",");
+            }
+          }
+          return String(loc || "");
+        };
+        return getLocationString(a.location).localeCompare(
+          getLocationString(b.location)
+        );
+      });
+    }
+    return data;
   };
 
   const getEmptyMessage = () => {
@@ -293,6 +333,65 @@ const HomeScreen = () => {
             ? "Your Tasks"
             : "Completed Tasks"}
         </Text>
+
+        {/* Filter Buttons - Newest, Oldest, Location */}
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "flex-end",
+            marginBottom: 8,
+          }}
+        >
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              filter === "newest" && styles.filterButtonActive,
+            ]}
+            onPress={() => setFilter("newest")}
+          >
+            <Text
+              style={[
+                styles.filterButtonText,
+                filter === "newest" && styles.filterButtonTextActive,
+              ]}
+            >
+              Newest
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              filter === "oldest" && styles.filterButtonActive,
+            ]}
+            onPress={() => setFilter("oldest")}
+          >
+            <Text
+              style={[
+                styles.filterButtonText,
+                filter === "oldest" && styles.filterButtonTextActive,
+              ]}
+            >
+              Oldest
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              filter === "location" && styles.filterButtonActive,
+            ]}
+            onPress={() => setFilter("location")}
+          >
+            <Text
+              style={[
+                styles.filterButtonText,
+                filter === "location" && styles.filterButtonTextActive,
+              ]}
+            >
+              Location
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <FlatList
           data={getTabData()}
           keyExtractor={(item) => item._id}
@@ -564,5 +663,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     zIndex: 1,
+  },
+  filterButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: "#eee",
+    marginLeft: 8,
+  },
+  filterButtonActive: {
+    backgroundColor: "#FF9800",
+  },
+  filterButtonText: {
+    color: "#666",
+    fontWeight: "600",
+  },
+  filterButtonTextActive: {
+    color: "#fff",
   },
 });
