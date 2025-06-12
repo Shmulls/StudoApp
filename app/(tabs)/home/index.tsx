@@ -24,6 +24,7 @@ const HomeScreen = () => {
   const [filter, setFilter] = useState<"newest" | "oldest" | "location">(
     "newest"
   );
+  const [showFilterMenu, setShowFilterMenu] = useState(false); // Add this line
 
   const {
     tasks,
@@ -326,71 +327,134 @@ const HomeScreen = () => {
 
       {/* Tasks Section */}
       <View style={styles.tasksSection}>
-        <Text style={styles.sectionTitle}>
-          {tab === "new"
-            ? "New Tasks"
-            : tab === "assigned"
-            ? "Your Tasks"
-            : "Completed Tasks"}
-        </Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>
+            {tab === "new"
+              ? "New Tasks"
+              : tab === "assigned"
+              ? "Your Tasks"
+              : "Completed Tasks"}
+          </Text>
 
-        {/* Filter Buttons - Newest, Oldest, Location */}
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "flex-end",
-            marginBottom: 8,
-          }}
-        >
+          {/* Modern Filter Dropdown */}
           <TouchableOpacity
-            style={[
-              styles.filterButton,
-              filter === "newest" && styles.filterButtonActive,
-            ]}
-            onPress={() => setFilter("newest")}
+            style={styles.filterContainer}
+            onPress={() => setShowFilterMenu(!showFilterMenu)}
           >
-            <Text
-              style={[
-                styles.filterButtonText,
-                filter === "newest" && styles.filterButtonTextActive,
-              ]}
-            >
-              Newest
+            <Ionicons
+              name={
+                filter === "newest"
+                  ? "time-outline"
+                  : filter === "oldest"
+                  ? "hourglass-outline"
+                  : "location-outline"
+              }
+              size={16}
+              color="#666"
+            />
+            <Text style={styles.filterText}>
+              {filter === "newest"
+                ? "Newest"
+                : filter === "oldest"
+                ? "Oldest"
+                : "Location"}
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.filterButton,
-              filter === "oldest" && styles.filterButtonActive,
-            ]}
-            onPress={() => setFilter("oldest")}
-          >
-            <Text
-              style={[
-                styles.filterButtonText,
-                filter === "oldest" && styles.filterButtonTextActive,
-              ]}
-            >
-              Oldest
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.filterButton,
-              filter === "location" && styles.filterButtonActive,
-            ]}
-            onPress={() => setFilter("location")}
-          >
-            <Text
-              style={[
-                styles.filterButtonText,
-                filter === "location" && styles.filterButtonTextActive,
-              ]}
-            >
-              Location
-            </Text>
+            <Ionicons
+              name={showFilterMenu ? "chevron-up" : "chevron-down"}
+              size={16}
+              color="#666"
+            />
           </TouchableOpacity>
         </View>
+
+        {/* Filter Menu Dropdown */}
+        {showFilterMenu && (
+          <View style={styles.filterMenu}>
+            <TouchableOpacity
+              style={[
+                styles.filterMenuItem,
+                filter === "newest" && styles.filterMenuItemActive,
+              ]}
+              onPress={() => {
+                setFilter("newest");
+                setShowFilterMenu(false);
+              }}
+            >
+              <Ionicons
+                name="time-outline"
+                size={18}
+                color={filter === "newest" ? "#FF9800" : "#666"}
+              />
+              <Text
+                style={[
+                  styles.filterMenuText,
+                  filter === "newest" && styles.filterMenuTextActive,
+                ]}
+              >
+                Newest First
+              </Text>
+              {filter === "newest" && (
+                <Ionicons name="checkmark" size={18} color="#FF9800" />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.filterMenuItem,
+                filter === "oldest" && styles.filterMenuItemActive,
+              ]}
+              onPress={() => {
+                setFilter("oldest");
+                setShowFilterMenu(false);
+              }}
+            >
+              <Ionicons
+                name="hourglass-outline"
+                size={18}
+                color={filter === "oldest" ? "#FF9800" : "#666"}
+              />
+              <Text
+                style={[
+                  styles.filterMenuText,
+                  filter === "oldest" && styles.filterMenuTextActive,
+                ]}
+              >
+                Oldest First
+              </Text>
+              {filter === "oldest" && (
+                <Ionicons name="checkmark" size={18} color="#FF9800" />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.filterMenuItem,
+                filter === "location" && styles.filterMenuItemActive,
+              ]}
+              onPress={() => {
+                setFilter("location");
+                setShowFilterMenu(false);
+              }}
+            >
+              <Ionicons
+                name="location-outline"
+                size={18}
+                color={filter === "location" ? "#FF9800" : "#666"}
+              />
+              <Text
+                style={[
+                  styles.filterMenuText,
+                  filter === "location" && styles.filterMenuTextActive,
+                ]}
+              >
+                By Location
+              </Text>
+              {filter === "location" && (
+                <Ionicons name="checkmark" size={18} color="#FF9800" />
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
 
         <FlatList
           data={getTabData()}
@@ -519,8 +583,8 @@ const styles = StyleSheet.create({
   },
   progressSection: {
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20, // Add bottom padding to prevent overlap
+    paddingTop: 16, // Reduced from 20
+    paddingBottom: 12, // Reduced from 20
   },
   sectionTitle: {
     fontSize: 20,
@@ -531,18 +595,18 @@ const styles = StyleSheet.create({
   progressCard: {
     backgroundColor: "#fff",
     borderRadius: 16,
-    padding: 20,
+    padding: 16, // Reduced from 20
     shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
-    marginBottom: 8, // Add margin to separate from tabs
+    marginBottom: 4, // Reduced from 8
   },
   progressStats: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginTop: 16,
+    marginTop: 12, // Reduced from 16
   },
   statItem: {
     alignItems: "center",
@@ -624,6 +688,73 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12, // Reduce top padding
   },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  filterContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+    minWidth: 100,
+  },
+  filterText: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500",
+    marginHorizontal: 6,
+  },
+  filterMenu: {
+    position: "absolute",
+    top: 60,
+    right: 0,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    paddingVertical: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    zIndex: 1000,
+    minWidth: 180,
+    borderWidth: 1,
+    borderColor: "#f0f0f0",
+  },
+  filterMenuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 4,
+    borderRadius: 8,
+  },
+  filterMenuItemActive: {
+    backgroundColor: "#FFF3E0",
+  },
+  filterMenuText: {
+    fontSize: 14,
+    color: "#333",
+    fontWeight: "500",
+    flex: 1,
+    marginLeft: 12,
+  },
+  filterMenuTextActive: {
+    color: "#FF9800",
+    fontWeight: "600",
+  },
   listContent: {
     paddingBottom: 40,
   },
@@ -663,22 +794,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     zIndex: 1,
-  },
-  filterButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: "#eee",
-    marginLeft: 8,
-  },
-  filterButtonActive: {
-    backgroundColor: "#FF9800",
-  },
-  filterButtonText: {
-    color: "#666",
-    fontWeight: "600",
-  },
-  filterButtonTextActive: {
-    color: "#fff",
   },
 });

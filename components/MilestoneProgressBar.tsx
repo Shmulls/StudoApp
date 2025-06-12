@@ -18,7 +18,7 @@ const MilestoneProgressBar = ({
 
   const percentage =
     maxPoints > 0 ? Math.min((points / maxPoints) * 100, 100) : 0;
-  const progressWidth = (width - 80) * 0.8; // Responsive width
+  const progressWidth = (width - 80) * 0.85; // Responsive width
 
   // Milestone points (every 30 points = 25%)
   const milestones = [30, 60, 90, 120];
@@ -57,12 +57,12 @@ const MilestoneProgressBar = ({
   };
 
   const getProgressMessage = () => {
-    if (points >= 120) return "🏆 Goal Achieved! You're a champion!";
-    if (points >= 90) return "🔥 Almost there! Just 30 more points!";
-    if (points >= 60) return "💪 Great progress! Halfway to your goal!";
-    if (points >= 30) return "🚀 Good start! Keep building momentum!";
-    if (points > 0) return "⭐ You've started your journey!";
-    return "🎯 Complete tasks to earn your first points!";
+    if (points >= 120) return "🏆 Goal Achieved!";
+    if (points >= 90) return "🔥 Almost there!";
+    if (points >= 60) return "💪 Great progress!";
+    if (points >= 30) return "🚀 Good start!";
+    if (points > 0) return "⭐ Getting started!";
+    return "🎯 Complete tasks to earn points!";
   };
 
   const getMilestoneIcon = () => {
@@ -90,9 +90,9 @@ const MilestoneProgressBar = ({
 
   return (
     <View style={styles.container}>
-      {/* Header Section */}
+      {/* Compact Header */}
       <View style={styles.header}>
-        <View style={styles.titleContainer}>
+        <View style={styles.titleSection}>
           <View
             style={[
               styles.iconContainer,
@@ -101,37 +101,39 @@ const MilestoneProgressBar = ({
           >
             <Ionicons
               name={getMilestoneIcon() as any}
-              size={20}
+              size={16}
               color={getProgressColor()}
             />
           </View>
-          <View>
+          <View style={styles.titleText}>
             <Text style={styles.title}>Points Progress</Text>
             <Text style={styles.subtitle}>{getProgressMessage()}</Text>
           </View>
         </View>
-        <View style={styles.levelContainer}>
-          <Text style={[styles.level, { color: getProgressColor() }]}>
+        <View style={styles.levelBadge}>
+          <Text style={[styles.levelText, { color: getProgressColor() }]}>
             {getCurrentLevel()}
           </Text>
         </View>
       </View>
 
-      {/* Points Display */}
-      <View style={styles.pointsDisplay}>
-        <View style={styles.currentPoints}>
-          <Text style={[styles.pointsNumber, { color: getProgressColor() }]}>
+      {/* Compact Progress Display */}
+      <View style={styles.progressDisplay}>
+        <View style={styles.pointsRow}>
+          <Text style={[styles.currentPoints, { color: getProgressColor() }]}>
             {points}
           </Text>
-          <Text style={styles.pointsLabel}>Points</Text>
+          <Text style={styles.maxPoints}>/{maxPoints}</Text>
+          <Text style={styles.percentage}>
+            ({Math.round((points / maxPoints) * 100)}%)
+          </Text>
         </View>
-        <View style={styles.goalPoints}>
-          <Text style={styles.goalNumber}>/ {maxPoints}</Text>
-          <Text style={styles.goalLabel}>Goal</Text>
-        </View>
+        {points < maxPoints && (
+          <Text style={styles.nextInfo}>{pointsToNext} to next milestone</Text>
+        )}
       </View>
 
-      {/* Modern Progress Bar */}
+      {/* Compact Progress Bar */}
       <View style={styles.progressContainer}>
         <View style={styles.progressTrack}>
           <Animated.View
@@ -147,7 +149,6 @@ const MilestoneProgressBar = ({
               },
             ]}
           >
-            {/* Animated Glow Effect */}
             <Animated.View
               style={[
                 styles.progressGlow,
@@ -162,7 +163,7 @@ const MilestoneProgressBar = ({
             />
           </Animated.View>
 
-          {/* Progress Dots for Milestones (30, 60, 90, 120 points) */}
+          {/* Milestone Dots */}
           {milestones.map((milestone, index) => {
             const milestonePercentage = (milestone / maxPoints) * 100;
             return (
@@ -171,7 +172,7 @@ const MilestoneProgressBar = ({
                 style={[
                   styles.milestone,
                   {
-                    left: (progressWidth * milestonePercentage) / 100 - 6,
+                    left: (progressWidth * milestonePercentage) / 100 - 4,
                     backgroundColor:
                       points >= milestone ? getProgressColor() : "#e0e0e0",
                     borderColor: points >= milestone ? "#fff" : "#ccc",
@@ -179,56 +180,61 @@ const MilestoneProgressBar = ({
                 ]}
               >
                 {points >= milestone && (
-                  <Ionicons name="checkmark" size={8} color="#fff" />
+                  <Ionicons name="checkmark" size={6} color="#fff" />
                 )}
-                <View style={styles.milestoneLabel}>
-                  <Text style={styles.milestoneLabelText}>{milestone}</Text>
-                </View>
               </View>
             );
           })}
         </View>
 
-        {/* Next milestone info */}
-        {points < maxPoints && (
-          <View style={styles.nextMilestone}>
-            <Text style={styles.nextMilestoneText}>
-              {pointsToNext} points to next milestone ({getNextMilestone()}{" "}
-              points)
-            </Text>
-          </View>
-        )}
+        {/* Compact Milestone Labels */}
+        <View style={styles.milestoneLabels}>
+          {milestones.map((milestone, index) => {
+            const milestonePercentage = (milestone / maxPoints) * 100;
+            return (
+              <Text
+                key={milestone}
+                style={[
+                  styles.milestoneLabel,
+                  {
+                    left:
+                      (progressWidth * milestonePercentage) / 100 -
+                      (milestone >= 100 ? 12 : 8), // Adjust for 3-digit numbers
+                    color: points >= milestone ? getProgressColor() : "#999",
+                    fontWeight: points >= milestone ? "600" : "400",
+                  },
+                ]}
+              >
+                {milestone}
+              </Text>
+            );
+          })}
+        </View>
       </View>
 
-      {/* Achievement Badges */}
+      {/* Compact Achievement Badges - Only show current level */}
       {points > 0 && (
-        <View style={styles.achievementContainer}>
-          {points >= 30 && (
-            <View style={styles.achievementBadge}>
-              <Ionicons name="rocket" size={12} color="#9C27B0" />
-              <Text style={styles.achievementText}>Beginner</Text>
-            </View>
-          )}
-          {points >= 60 && (
-            <View style={styles.achievementBadge}>
-              <Ionicons name="star" size={12} color="#2196F3" />
-              <Text style={styles.achievementText}>Advanced</Text>
-            </View>
-          )}
-          {points >= 90 && (
-            <View style={styles.achievementBadge}>
-              <Ionicons name="medal" size={12} color="#FF9800" />
-              <Text style={styles.achievementText}>Expert</Text>
-            </View>
-          )}
-          {points >= 120 && (
-            <View style={[styles.achievementBadge, styles.masterBadge]}>
-              <Ionicons name="trophy" size={12} color="#FFD700" />
-              <Text style={[styles.achievementText, styles.masterText]}>
-                Champion
-              </Text>
-            </View>
-          )}
+        <View style={styles.currentAchievement}>
+          <View
+            style={[
+              styles.achievementBadge,
+              points >= 120 && styles.masterBadge,
+            ]}
+          >
+            <Ionicons
+              name={getMilestoneIcon() as any}
+              size={12}
+              color={points >= 120 ? "#FFD700" : getProgressColor()}
+            />
+            <Text
+              style={[
+                styles.achievementText,
+                points >= 120 && styles.masterText,
+              ]}
+            >
+              {getCurrentLevel()}
+            </Text>
+          </View>
         </View>
       )}
     </View>
@@ -245,88 +251,88 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  titleContainer: {
+  titleSection: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
+    marginRight: 10,
+  },
+  titleText: {
+    flex: 1,
   },
   title: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "bold",
     color: "#222",
     marginBottom: 2,
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#666",
   },
-  levelContainer: {
+  levelBadge: {
     backgroundColor: "#f8f9fa",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "#e0e0e0",
   },
-  level: {
-    fontSize: 12,
+  levelText: {
+    fontSize: 10,
     fontWeight: "bold",
   },
-  pointsDisplay: {
+  progressDisplay: {
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  pointsRow: {
     flexDirection: "row",
     alignItems: "baseline",
-    justifyContent: "center",
-    marginBottom: 20,
+    marginBottom: 4,
   },
   currentPoints: {
-    alignItems: "center",
-  },
-  pointsNumber: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: "bold",
   },
-  pointsLabel: {
-    fontSize: 12,
-    color: "#666",
-    marginTop: 2,
-  },
-  goalPoints: {
-    alignItems: "center",
-    marginLeft: 8,
-  },
-  goalNumber: {
-    fontSize: 20,
+  maxPoints: {
+    fontSize: 16,
     fontWeight: "600",
     color: "#999",
+    marginLeft: 2,
   },
-  goalLabel: {
+  percentage: {
+    fontSize: 12,
+    color: "#666",
+    marginLeft: 6,
+  },
+  nextInfo: {
     fontSize: 10,
-    color: "#999",
-    marginTop: 2,
+    color: "#666",
+    fontWeight: "500",
   },
   progressContainer: {
     marginBottom: 16,
   },
   progressTrack: {
-    height: 12,
+    height: 8,
     backgroundColor: "#f0f0f0",
-    borderRadius: 6,
+    borderRadius: 4,
     position: "relative",
-    marginBottom: 24,
+    marginBottom: 12,
   },
   progressBar: {
-    height: 12,
-    borderRadius: 6,
+    height: 8,
+    borderRadius: 4,
     position: "relative",
     overflow: "hidden",
   },
@@ -336,51 +342,40 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 6,
+    borderRadius: 4,
   },
   milestone: {
     position: "absolute",
-    top: -3,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
+    top: -2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
   },
+  milestoneLabels: {
+    flexDirection: "row",
+    position: "relative",
+    height: 20,
+  },
   milestoneLabel: {
     position: "absolute",
-    top: 22,
-    alignItems: "center",
-    width: 30,
-    left: -6,
-  },
-  milestoneLabelText: {
-    fontSize: 9,
-    color: "#666",
-    fontWeight: "500",
-  },
-  nextMilestone: {
-    alignItems: "center",
-  },
-  nextMilestoneText: {
     fontSize: 12,
-    color: "#666",
-    fontWeight: "500",
+    fontWeight: "600",
+    width: 24,
+    textAlign: "center",
   },
-  achievementContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 8,
+  currentAchievement: {
+    alignItems: "center",
   },
   achievementBadge: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#f8f9fa",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "#e0e0e0",
     gap: 4,
@@ -390,7 +385,7 @@ const styles = StyleSheet.create({
     borderColor: "#FFD700",
   },
   achievementText: {
-    fontSize: 11,
+    fontSize: 10,
     color: "#666",
     fontWeight: "600",
   },
