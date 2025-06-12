@@ -1,10 +1,10 @@
 const express = require("express");
 const Task = require("../models/Task");
 const CompletedTask = require("../models/CompletedTask");
+const Notification = require("../models/Notification");
 const router = express.Router();
 const mongoose = require("mongoose");
 const io = require("../server");
-const Notification = require("../models/Notification");
 
 // Get all tasks
 router.get("/", async (req, res) => {
@@ -35,33 +35,20 @@ router.post("/", async (req, res) => {
 
     console.log("Task created successfully:", newTask);
 
-    // Create a new notification for task creation (optional)
+    // Create notification for all users (you can customize this logic)
     const notification = new Notification({
-      userId: "broadcast", // Use "broadcast" for system-wide notifications
-      title: "New Task Added",
-      message: `A new task titled "${newTask.title}" has been added.`,
+      userId: "all", // or specific user IDs
+      title: "New Task Available!",
+      message: `${task.title} - ${task.description.substring(0, 100)}...`,
+      type: "new_task",
+      taskId: task._id,
       createdAt: new Date(),
     });
 
-    // Save the notification to the database
-    const savedNotification = await notification.save();
-    console.log("Notification created successfully:", savedNotification);
+    await notification.save();
 
-    // Emit the notification using Socket.io
-    const io = req.app.get("io");
-    if (io) {
-      io.emit("new-notification", {
-        _id: savedNotification._id,
-        title: savedNotification.title,
-        message: savedNotification.message,
-        createdAt: savedNotification.createdAt,
-      });
-
-      console.log("Emitted: New notification ->", {
-        title: savedNotification.title,
-        message: savedNotification.message,
-      });
-    }
+    // Emit real-time notification via Socket.IO
+    req.app.get("io").emit("new-notification", notification);
 
     res.status(201).json(newTask);
   } catch (error) {

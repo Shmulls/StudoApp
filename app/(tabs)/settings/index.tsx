@@ -1,8 +1,11 @@
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Linking from "expo-linking";
-import React, { useState } from "react";
+import * as Location from "expo-location";
+import React, { useEffect, useState } from "react";
 import {
+  Alert,
   Modal,
   ScrollView,
   StyleSheet,
@@ -41,8 +44,78 @@ const SettingsScreen = () => {
   const { user } = useUser();
   const { signOut } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [locationEnabled, setLocationEnabled] = useState(false);
   const [qrVisible, setQrVisible] = useState(false);
   const [termsVisible, setTermsVisible] = useState(false);
+
+  // Check location settings on component mount
+  useEffect(() => {
+    checkLocationSettings();
+  }, []);
+
+  const checkLocationSettings = async () => {
+    try {
+      // Check if location is enabled in app settings
+      const locationSetting = await AsyncStorage.getItem("locationEnabled");
+      const isLocationEnabled = locationSetting === "true";
+
+      // Check if location permission is granted
+      let { status } = await Location.getForegroundPermissionsAsync();
+
+      // Location is considered enabled if both permission is granted AND app setting is enabled
+      setLocationEnabled(isLocationEnabled && status === "granted");
+    } catch (error) {
+      console.error("Error checking location settings:", error);
+    }
+  };
+
+  const handleLocationToggle = async (value: boolean) => {
+    if (value) {
+      // User wants to enable location
+      try {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+
+        if (status === "granted") {
+          // Permission granted, save setting and enable
+          await AsyncStorage.setItem("locationEnabled", "true");
+          setLocationEnabled(true);
+          Alert.alert(
+            "Location Enabled",
+            "Your location will now be used to sort tasks by distance.",
+            [{ text: "OK" }]
+          );
+        } else {
+          // Permission denied
+          Alert.alert(
+            "Location Permission Denied",
+            "Please enable location permission in your device settings to use location-based features.",
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Settings",
+                onPress: () => Linking.openSettings(),
+              },
+            ]
+          );
+          setLocationEnabled(false);
+          await AsyncStorage.setItem("locationEnabled", "false");
+        }
+      } catch (error) {
+        console.error("Error requesting location permission:", error);
+        setLocationEnabled(false);
+        await AsyncStorage.setItem("locationEnabled", "false");
+      }
+    } else {
+      // User wants to disable location
+      await AsyncStorage.setItem("locationEnabled", "false");
+      setLocationEnabled(false);
+      Alert.alert(
+        "Location Disabled",
+        "Location-based sorting will no longer be available.",
+        [{ text: "OK" }]
+      );
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -86,6 +159,30 @@ const SettingsScreen = () => {
               onValueChange={setNotificationsEnabled}
               trackColor={{ false: "#e0e0e0", true: "#FF9800" }}
               thumbColor={notificationsEnabled ? "#fff" : "#fff"}
+              ios_backgroundColor="#e0e0e0"
+            />
+          </View>
+
+          {/* Location Setting */}
+          <View style={styles.modernSettingRow}>
+            <View style={styles.settingLeft}>
+              <View
+                style={[styles.settingIcon, { backgroundColor: "#FF9800" }]}
+              >
+                <Ionicons name="location-outline" size={20} color="#fff" />
+              </View>
+              <View style={styles.settingTextContainer}>
+                <Text style={styles.settingText}>Location Services</Text>
+                <Text style={styles.settingSubtext}>
+                  Sort tasks by distance from your location
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={locationEnabled}
+              onValueChange={handleLocationToggle}
+              trackColor={{ false: "#e0e0e0", true: "#FF9800" }}
+              thumbColor={locationEnabled ? "#fff" : "#fff"}
               ios_backgroundColor="#e0e0e0"
             />
           </View>
@@ -314,6 +411,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#222",
     fontWeight: "500",
+  },
+  settingTextContainer: {
+    flex: 1,
+  },
+  settingSubtext: {
+    fontSize: 12,
+    color: "#999",
+    marginTop: 2,
   },
   logoutRow: {
     borderBottomWidth: 0,

@@ -2,79 +2,66 @@ const express = require("express");
 const Notification = require("../models/Notification");
 const router = express.Router();
 
-// Create a new notification
-router.post("/", async (req, res) => {
-  const { userId, title, message, type, taskId, completedBy } = req.body;
+// Get notifications for a user
+router.get("/:userId", async (req, res) => {
   try {
-    const notification = new Notification({
-      userId,
-      title,
-      message,
-      type: type || "general",
-      taskId,
-      completedBy,
-    });
+    const { userId } = req.params;
+    console.log("Fetching notifications for user:", userId);
+
+    // Get notifications for this specific user OR broadcast notifications
+    const notifications = await Notification.find({
+      $or: [{ userId: userId }, { userId: "all" }],
+    }).sort({ createdAt: -1 });
+
+    console.log("Found notifications:", notifications.length);
+    res.json(notifications);
+  } catch (error) {
+    console.error("Error fetching notifications:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Mark notification as read
+router.patch("/:notificationId", async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+    const { status } = req.body;
+
+    const notification = await Notification.findByIdAndUpdate(
+      notificationId,
+      { status },
+      { new: true }
+    );
+
+    if (!notification) {
+      return res.status(404).json({ message: "Notification not found" });
+    }
+
+    res.json(notification);
+  } catch (error) {
+    console.error("Error updating notification:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Create notification (for testing)
+router.post("/", async (req, res) => {
+  try {
+    console.log("Creating notification:", req.body);
+    const notification = new Notification(req.body);
     await notification.save();
 
-    // Get io instance and emit real-time notification
+    // Emit real-time notification
     const io = req.app.get("io");
-    io.to(`org_${userId}`).emit("new-notification", notification);
+    if (io) {
+      io.emit("new-notification", notification);
+      console.log("Notification emitted via socket");
+    }
 
     res.status(201).json(notification);
   } catch (error) {
     console.error("Error creating notification:", error);
-    res.status(500).json({ message: "Error creating notification" });
-  }
-});
-
-// Get all notifications for a specific user
-router.get("/:userId", async (req, res) => {
-  const { userId } = req.params;
-  try {
-    const notifications = await Notification.find({ userId }).sort({
-      createdAt: -1,
-    });
-    res.json({ data: notifications }); // Wrap in data object to match frontend expectation
-  } catch (error) {
-    console.error("Error retrieving notifications:", error);
-    res.status(500).json({ message: "Error retrieving notifications" });
-  }
-});
-
-// Update notification to mark as read
-router.patch("/:id", async (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body;
-  try {
-    // Convert status to read boolean
-    const read = status === "read";
-    const notification = await Notification.findByIdAndUpdate(
-      id,
-      { read, updatedAt: new Date() },
-      { new: true }
-    );
-    if (!notification) {
-      return res.status(404).json({ message: "Notification not found" });
-    }
-    res.json(notification);
-  } catch (error) {
-    console.error("Error updating notification:", error);
-    res.status(500).json({ message: "Error updating notification" });
-  }
-});
-
-// Delete a notification
-router.delete("/:id", async (req, res) => {
-  const { id } = req.params;
-  try {
-    const notification = await Notification.findByIdAndDelete(id);
-    if (!notification) {
-      return res.status(404).json({ message: "Notification not found" });
-    }
-    res.json({ message: "Notification deleted" });
-  } catch (error) {
-    console.error("Error deleting notification:", error);
-    res.status(500).json({ message: "Error deleting notification" });
+    res.status(400).json({ message: error.message });
   }
 });
 

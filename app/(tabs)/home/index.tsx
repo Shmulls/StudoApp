@@ -1,6 +1,7 @@
 import CompletedTaskCard from "@/components/CompletedTaskCard";
 import { useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
@@ -31,6 +32,7 @@ const HomeScreen = () => {
     latitude: number;
     longitude: number;
   } | null>(null);
+  const [locationEnabled, setLocationEnabled] = useState(false);
 
   const {
     tasks,
@@ -81,54 +83,78 @@ const HomeScreen = () => {
     setRefreshing(false);
   };
 
-  // Add function to get user's current location
-  const getUserLocation = async () => {
+  // Check location settings and get location if enabled
+  const checkAndGetLocation = async () => {
     try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        console.log("Permission to access location was denied");
-        return null;
+      const locationSetting = await AsyncStorage.getItem("locationEnabled");
+      const isLocationEnabled = locationSetting === "true";
+      setLocationEnabled(isLocationEnabled);
+
+      if (isLocationEnabled) {
+        let { status } = await Location.getForegroundPermissionsAsync();
+        if (status === "granted") {
+          let location = await Location.getCurrentPositionAsync({});
+          const userCoords = {
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+          };
+          setUserLocation(userCoords);
+          return userCoords;
+        }
       }
 
-      let location = await Location.getCurrentPositionAsync({});
-      const userCoords = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      };
-      setUserLocation(userCoords);
-      return userCoords;
+      // If location is disabled or permission not granted, clear user location
+      setUserLocation(null);
+      return null;
     } catch (error) {
-      console.error("Error getting user location:", error);
+      console.error("Error checking location settings:", error);
+      setUserLocation(null);
       return null;
     }
   };
 
-  // Add function to calculate distance between two coordinates
+  // Update the existing getUserLocation function
+  const getUserLocation = async () => {
+    return await checkAndGetLocation();
+  };
+
+  // Add effect to check location settings when component mounts
+  useEffect(() => {
+    checkAndGetLocation();
+  }, []);
+
+  // Add effect to listen for location setting changes (optional - for real-time updates)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      checkAndGetLocation();
+    }, 5000); // Check every 5 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Haversine formula to calculate distance between two lat/lng points in meters
   const calculateDistance = (
     lat1: number,
     lon1: number,
     lat2: number,
     lon2: number
-  ): number => {
-    const R = 6371; // Radius of the Earth in kilometers
-    const dLat = (lat2 - lat1) * (Math.PI / 180);
-    const dLon = (lon2 - lon1) * (Math.PI / 180);
+  ) => {
+    const toRad = (value: number) => (value * Math.PI) / 180;
+    const R = 6371e3; // Earth radius in meters
+    const φ1 = toRad(lat1);
+    const φ2 = toRad(lat2);
+    const Δφ = toRad(lat2 - lat1);
+    const Δλ = toRad(lon2 - lon1);
+
     const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * (Math.PI / 180)) *
-        Math.cos(lat2 * (Math.PI / 180)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c; // Distance in kilometers
-    return distance;
+
+    return R * c;
   };
 
-  // Add effect to get user location when component mounts
-  useEffect(() => {
-    getUserLocation();
-  }, []);
-
+  // Task sorting and filtering logic
   const getTabData = () => {
     let data: typeof tasks = [];
     switch (tab) {
@@ -157,9 +183,9 @@ const HomeScreen = () => {
       );
     }
     if (filter === "location") {
-      // Sort by distance from user's current location
-      if (!userLocation) {
-        // If user location is not available, fallback to alphabetical sorting
+      // Check if location services are enabled
+      if (!locationEnabled || !userLocation) {
+        // If location is disabled or not available, fallback to alphabetical sorting
         return [...data].sort((a, b) => {
           const getLocationString = (loc: any) => {
             if (loc && typeof loc === "object") {
