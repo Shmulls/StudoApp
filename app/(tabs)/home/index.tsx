@@ -583,43 +583,43 @@ const styles = StyleSheet.create({
   },
   progressSection: {
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20, // Add bottom padding to prevent overlap
+    paddingTop: 12, // Reduced from 20
+    paddingBottom: 8, // Reduced from 20
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18, // Reduced from 20
     fontWeight: "bold",
     color: "#222",
-    marginBottom: 12,
+    marginBottom: 8, // Reduced from 12
   },
   progressCard: {
     backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 12, // Reduced from 16
+    padding: 12, // Reduced from 20
     shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-    marginBottom: 8, // Add margin to separate from tabs
+    shadowOpacity: 0.05, // Reduced shadow
+    shadowRadius: 8, // Reduced from 12
+    shadowOffset: { width: 0, height: 2 }, // Reduced from 4
+    elevation: 3, // Reduced from 4
+    marginBottom: 4, // Reduced from 8
   },
   progressStats: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginTop: 16,
+    marginTop: 8, // Reduced from 16
   },
   statItem: {
     alignItems: "center",
   },
   statNumber: {
-    fontSize: 24,
+    fontSize: 20, // Reduced from 24
     fontWeight: "bold",
     color: "#FF9800",
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11, // Reduced from 12
     color: "#666",
-    marginTop: 4,
+    marginTop: 2, // Reduced from 4
   },
   modernTabContainer: {
     backgroundColor: "#fff",

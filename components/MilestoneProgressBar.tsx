@@ -172,7 +172,7 @@ const MilestoneProgressBar = ({
                 style={[
                   styles.milestone,
                   {
-                    left: (progressWidth * milestonePercentage) / 100 - 4,
+                    left: (progressWidth * milestonePercentage) / 100 - 6,
                     backgroundColor:
                       points >= milestone ? getProgressColor() : "#e0e0e0",
                     borderColor: points >= milestone ? "#fff" : "#ccc",
@@ -180,14 +180,14 @@ const MilestoneProgressBar = ({
                 ]}
               >
                 {points >= milestone && (
-                  <Ionicons name="checkmark" size={6} color="#fff" />
+                  <Ionicons name="checkmark" size={8} color="#fff" />
                 )}
               </View>
             );
           })}
         </View>
 
-        {/* Compact Milestone Labels */}
+        {/* Milestone Labels */}
         <View style={styles.milestoneLabels}>
           {milestones.map((milestone, index) => {
             const milestonePercentage = (milestone / maxPoints) * 100;
@@ -197,9 +197,7 @@ const MilestoneProgressBar = ({
                 style={[
                   styles.milestoneLabel,
                   {
-                    left:
-                      (progressWidth * milestonePercentage) / 100 -
-                      (milestone >= 100 ? 12 : 8), // Adjust for 3-digit numbers
+                    left: (progressWidth * milestonePercentage) / 100 - 12,
                     color: points >= milestone ? getProgressColor() : "#999",
                     fontWeight: points >= milestone ? "600" : "400",
                   },
@@ -211,32 +209,6 @@ const MilestoneProgressBar = ({
           })}
         </View>
       </View>
-
-      {/* Compact Achievement Badges - Only show current level */}
-      {points > 0 && (
-        <View style={styles.currentAchievement}>
-          <View
-            style={[
-              styles.achievementBadge,
-              points >= 120 && styles.masterBadge,
-            ]}
-          >
-            <Ionicons
-              name={getMilestoneIcon() as any}
-              size={12}
-              color={points >= 120 ? "#FFD700" : getProgressColor()}
-            />
-            <Text
-              style={[
-                styles.achievementText,
-                points >= 120 && styles.masterText,
-              ]}
-            >
-              {getCurrentLevel()}
-            </Text>
-          </View>
-        </View>
-      )}
     </View>
   );
 };
@@ -251,7 +223,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 8, // Reduced from 12
   },
   titleSection: {
     flexDirection: "row",
@@ -259,80 +231,80 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   iconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28, // Reduced from 32
+    height: 28, // Reduced from 32
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 10,
+    marginRight: 8, // Reduced from 10
   },
   titleText: {
     flex: 1,
   },
   title: {
-    fontSize: 14,
+    fontSize: 13, // Reduced from 14
     fontWeight: "bold",
     color: "#222",
-    marginBottom: 2,
+    marginBottom: 1, // Reduced from 2
   },
   subtitle: {
-    fontSize: 11,
+    fontSize: 10, // Reduced from 11
     color: "#666",
   },
   levelBadge: {
     backgroundColor: "#f8f9fa",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 6, // Reduced from 8
+    paddingVertical: 3, // Reduced from 4
+    borderRadius: 10, // Reduced from 12
     borderWidth: 1,
     borderColor: "#e0e0e0",
   },
   levelText: {
-    fontSize: 10,
+    fontSize: 9, // Reduced from 10
     fontWeight: "bold",
   },
   progressDisplay: {
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 8, // Reduced from 12
   },
   pointsRow: {
     flexDirection: "row",
     alignItems: "baseline",
-    marginBottom: 4,
+    marginBottom: 3, // Reduced from 4
   },
   currentPoints: {
-    fontSize: 24,
+    fontSize: 20, // Reduced from 24
     fontWeight: "bold",
   },
   maxPoints: {
-    fontSize: 16,
+    fontSize: 14, // Reduced from 16
     fontWeight: "600",
     color: "#999",
     marginLeft: 2,
   },
   percentage: {
-    fontSize: 12,
+    fontSize: 11, // Reduced from 12
     color: "#666",
     marginLeft: 6,
   },
   nextInfo: {
-    fontSize: 10,
+    fontSize: 9, // Reduced from 10
     color: "#666",
     fontWeight: "500",
   },
   progressContainer: {
-    marginBottom: 16,
+    marginBottom: 8, // Reduced from 16
   },
   progressTrack: {
-    height: 8,
+    height: 6, // Reduced from 8
     backgroundColor: "#f0f0f0",
-    borderRadius: 4,
+    borderRadius: 3,
     position: "relative",
-    marginBottom: 12,
+    marginBottom: 8, // Reduced from 12
   },
   progressBar: {
-    height: 8,
-    borderRadius: 4,
+    height: 6, // Reduced from 8
+    borderRadius: 3,
     position: "relative",
     overflow: "hidden",
   },
@@ -342,11 +314,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 4,
+    borderRadius: 3,
   },
   milestone: {
     position: "absolute",
-    top: -2,
+    top: -3, // Adjusted for thinner bar
     width: 12,
     height: 12,
     borderRadius: 6,
@@ -357,39 +329,14 @@ const styles = StyleSheet.create({
   milestoneLabels: {
     flexDirection: "row",
     position: "relative",
-    height: 20,
+    height: 16, // Reduced from 20
   },
   milestoneLabel: {
     position: "absolute",
-    fontSize: 12,
+    fontSize: 10, // Reduced from 12
     fontWeight: "600",
     width: 24,
     textAlign: "center",
   },
-  currentAchievement: {
-    alignItems: "center",
-  },
-  achievementBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f8f9fa",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-    gap: 4,
-  },
-  masterBadge: {
-    backgroundColor: "#fff9e6",
-    borderColor: "#FFD700",
-  },
-  achievementText: {
-    fontSize: 10,
-    color: "#666",
-    fontWeight: "600",
-  },
-  masterText: {
-    color: "#B8860B",
-  },
+  // Remove currentAchievement, achievementBadge, masterBadge, achievementText, masterText styles
 });
