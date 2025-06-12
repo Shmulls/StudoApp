@@ -583,8 +583,8 @@ const styles = StyleSheet.create({
   },
   progressSection: {
     paddingHorizontal: 20,
-    paddingTop: 16, // Reduced from 20
-    paddingBottom: 12, // Reduced from 20
+    paddingTop: 20,
+    paddingBottom: 20, // Add bottom padding to prevent overlap
   },
   sectionTitle: {
     fontSize: 20,
@@ -595,18 +595,18 @@ const styles = StyleSheet.create({
   progressCard: {
     backgroundColor: "#fff",
     borderRadius: 16,
-    padding: 16, // Reduced from 20
+    padding: 20,
     shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
-    marginBottom: 4, // Reduced from 8
+    marginBottom: 8, // Add margin to separate from tabs
   },
   progressStats: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginTop: 12, // Reduced from 16
+    marginTop: 16,
   },
   statItem: {
     alignItems: "center",
