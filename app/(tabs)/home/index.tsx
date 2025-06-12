@@ -1,8 +1,9 @@
 import CompletedTaskCard from "@/components/CompletedTaskCard";
 import { useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
+import * as Location from "expo-location";
 import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -24,7 +25,12 @@ const HomeScreen = () => {
   const [filter, setFilter] = useState<"newest" | "oldest" | "location">(
     "newest"
   );
-  const [showFilterMenu, setShowFilterMenu] = useState(false); // Add this line
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  // Add user location state
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
 
   const {
     tasks,
@@ -75,6 +81,54 @@ const HomeScreen = () => {
     setRefreshing(false);
   };
 
+  // Add function to get user's current location
+  const getUserLocation = async () => {
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        console.log("Permission to access location was denied");
+        return null;
+      }
+
+      let location = await Location.getCurrentPositionAsync({});
+      const userCoords = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
+      setUserLocation(userCoords);
+      return userCoords;
+    } catch (error) {
+      console.error("Error getting user location:", error);
+      return null;
+    }
+  };
+
+  // Add function to calculate distance between two coordinates
+  const calculateDistance = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ): number => {
+    const R = 6371; // Radius of the Earth in kilometers
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) *
+        Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c; // Distance in kilometers
+    return distance;
+  };
+
+  // Add effect to get user location when component mounts
+  useEffect(() => {
+    getUserLocation();
+  }, []);
+
   const getTabData = () => {
     let data: typeof tasks = [];
     switch (tab) {
@@ -103,23 +157,68 @@ const HomeScreen = () => {
       );
     }
     if (filter === "location") {
-      // Sort alphabetically by location (string or object with address)
+      // Sort by distance from user's current location
+      if (!userLocation) {
+        // If user location is not available, fallback to alphabetical sorting
+        return [...data].sort((a, b) => {
+          const getLocationString = (loc: any) => {
+            if (loc && typeof loc === "object") {
+              if ("address" in loc && typeof loc.address === "string") {
+                return loc.address;
+              }
+              if (loc.type === "Point" && Array.isArray(loc.coordinates)) {
+                return loc.coordinates.join(",");
+              }
+            }
+            return String(loc || "");
+          };
+          return getLocationString(a.location).localeCompare(
+            getLocationString(b.location)
+          );
+        });
+      }
+
+      // Sort by distance (closest first)
       return [...data].sort((a, b) => {
-        const getLocationString = (loc: any) => {
-          if (loc && typeof loc === "object") {
-            if ("address" in loc && typeof loc.address === "string") {
-              return loc.address;
-            }
-            // If it's a Point object, convert coordinates to string
-            if (loc.type === "Point" && Array.isArray(loc.coordinates)) {
-              return loc.coordinates.join(",");
-            }
+        // Get task coordinates
+        const getTaskCoordinates = (task: any) => {
+          if (
+            task.location &&
+            task.location.type === "Point" &&
+            Array.isArray(task.location.coordinates)
+          ) {
+            return {
+              longitude: task.location.coordinates[0],
+              latitude: task.location.coordinates[1],
+            };
           }
-          return String(loc || "");
+          return null;
         };
-        return getLocationString(a.location).localeCompare(
-          getLocationString(b.location)
+
+        const aCoords = getTaskCoordinates(a);
+        const bCoords = getTaskCoordinates(b);
+
+        // If either task doesn't have coordinates, put it at the end
+        if (!aCoords && !bCoords) return 0;
+        if (!aCoords) return 1;
+        if (!bCoords) return -1;
+
+        // Calculate distances
+        const distanceA = calculateDistance(
+          userLocation.latitude,
+          userLocation.longitude,
+          aCoords.latitude,
+          aCoords.longitude
         );
+
+        const distanceB = calculateDistance(
+          userLocation.latitude,
+          userLocation.longitude,
+          bCoords.latitude,
+          bCoords.longitude
+        );
+
+        return distanceA - distanceB; // Sort by distance (ascending)
       });
     }
     return data;
