@@ -274,6 +274,41 @@ const TaskCard = ({
     }
   };
 
+  const formatTaskDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const taskDate = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate()
+    );
+
+    const timeStr = date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    // If it's today, just show time
+    if (taskDate.getTime() === today.getTime()) {
+      return `Today • ${timeStr}`;
+    }
+
+    // If it's tomorrow
+    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+    if (taskDate.getTime() === tomorrow.getTime()) {
+      return `Tomorrow • ${timeStr}`;
+    }
+
+    // Otherwise show date and time
+    return date.toLocaleString([], {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   return (
     <>
       <View style={styles.modernTaskCard}>
@@ -286,12 +321,7 @@ const TaskCard = ({
             <View style={styles.taskTimeContainer}>
               <Ionicons name="time-outline" size={14} color="#666" />
               <Text style={styles.modernTaskTime}>
-                {task.time
-                  ? new Date(task.time).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
-                  : "No time set"}
+                {task.time ? formatTaskDateTime(task.time) : "No time set"}
               </Text>
             </View>
           </View>
