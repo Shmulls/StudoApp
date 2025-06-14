@@ -15,6 +15,9 @@
     "preset": "jest-expo",
     "setupFilesAfterEnv": [
       "<rootDir>/jest-setup.js"
+    ],
+    "testMatch": [
+      "**/?(*.)+(test).[jt]s?(x)"
     ]
   },
   "dependencies": {
