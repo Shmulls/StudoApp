@@ -24,3 +24,6 @@ jobs:
       - name: Run tests
         run: npm test -- --passWithNoTests
         working-directory: ./
+
+      - name: List files in components
+        run: ls -l components
