@@ -1,6 +1,26 @@
 import { fireEvent, render } from "@testing-library/react-native";
 import App from "./App";
 import HomeScreen from "./app/(tabs)/home";
+import React from "react";
+
+// Fix the animated mock - this is the correct path
+jest.mock("react-native-reanimated", () => {
+  const Reanimated = require("react-native-reanimated/mock");
+  Reanimated.default.call = () => {};
+  return Reanimated;
+});
+
+// Mock Expo modules
+jest.mock("expo-location", () => ({
+  requestForegroundPermissionsAsync: jest.fn(() =>
+    Promise.resolve({ status: "granted" })
+  ),
+  getCurrentPositionAsync: jest.fn(() =>
+    Promise.resolve({
+      coords: { latitude: 37.7749, longitude: -122.4194 },
+    })
+  ),
+}));
 
 // Mock navigation
 jest.mock("@react-navigation/native", () => ({
@@ -36,14 +56,24 @@ jest.mock("react-native/Libraries/Animated/NativeAnimatedHelper");
 jest.mock("@clerk/clerk-expo", () => ({
   useUser: () => ({
     user: {
+      id: "test-user",
       firstName: "Test",
+      lastName: "User",
       imageUrl: "https://example.com/avatar.png",
+      publicMetadata: { role: "user" },
     },
   }),
+  useAuth: () => ({
+    isSignedIn: true,
+    userId: "test-user",
+  }),
+  ClerkProvider: ({ children }) => children,
 }));
 jest.mock("expo-router", () => ({
-  router: { push: jest.fn() },
-  useFocusEffect: (cb) => cb(),
+  router: { push: jest.fn(), replace: jest.fn() },
+  Stack: ({ children }) => children,
+  useLocalSearchParams: () => ({}),
+  useFocusEffect: (callback) => callback(),
 }));
 jest.mock("../../../hooks/useTasks", () => ({
   useTasks: () => ({
