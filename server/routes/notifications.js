@@ -8,16 +8,22 @@ router.get("/:userId", async (req, res) => {
     const { userId } = req.params;
     console.log("Fetching notifications for user:", userId);
 
-    // Get notifications for this specific user OR broadcast notifications
+    // Get notifications for this specific user OR broadcast notifications (userId: "all")
     const notifications = await Notification.find({
       $or: [{ userId: userId }, { userId: "all" }],
     }).sort({ createdAt: -1 });
 
-    console.log("Found notifications:", notifications.length);
-    res.json(notifications);
+    console.log(
+      `Found ${notifications.length} notifications for user ${userId}`
+    );
+
+    res.json({
+      success: true,
+      data: notifications,
+    });
   } catch (error) {
     console.error("Error fetching notifications:", error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ error: "Failed to fetch notifications" });
   }
 });
 

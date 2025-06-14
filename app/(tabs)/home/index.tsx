@@ -7,6 +7,7 @@ import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   StyleSheet,
@@ -33,6 +34,7 @@ const HomeScreen = () => {
     longitude: number;
   } | null>(null);
   const [locationEnabled, setLocationEnabled] = useState(false);
+  const [userTotalPoints, setUserTotalPoints] = useState(0); // Add this state for total points
 
   const {
     tasks,
@@ -83,33 +85,82 @@ const HomeScreen = () => {
     setRefreshing(false);
   };
 
-  // Check location settings and get location if enabled
-  const checkAndGetLocation = async () => {
+  // Add Google Geolocation API configuration at the top
+  const GOOGLE_PLACES_API_KEY = "AIzaSyAjyYxXChjy1vRsJqanVMJxjieY1cOCHLA"; // Same as AddTaskModal
+
+  // Replace the existing requestLocationPermission function
+  const requestLocationPermission = async () => {
     try {
-      const locationSetting = await AsyncStorage.getItem("locationEnabled");
-      const isLocationEnabled = locationSetting === "true";
-      setLocationEnabled(isLocationEnabled);
+      console.log("📍 Getting location using Google Geolocation API...");
 
-      if (isLocationEnabled) {
-        let { status } = await Location.getForegroundPermissionsAsync();
-        if (status === "granted") {
-          let location = await Location.getCurrentPositionAsync({});
-          const userCoords = {
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-          };
-          setUserLocation(userCoords);
-          return userCoords;
+      // Use Google Geolocation API instead of Expo Location
+      const response = await fetch(
+        `https://www.googleapis.com/geolocation/v1/geolocate?key=${GOOGLE_PLACES_API_KEY}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({}), // Empty body uses cell towers, WiFi, and IP for location
         }
-      }
+      );
 
-      // If location is disabled or permission not granted, clear user location
-      setUserLocation(null);
-      return null;
+      const data = await response.json();
+
+      if (data.location) {
+        const userCoords = {
+          latitude: data.location.lat,
+          longitude: data.location.lng,
+        };
+
+        setUserLocation(userCoords);
+        setLocationEnabled(true);
+
+        // Store location in AsyncStorage for future use
+        await AsyncStorage.setItem("userLocation", JSON.stringify(userCoords));
+        await AsyncStorage.setItem("locationEnabled", "true");
+
+        console.log("📍 Location obtained via Google API:", userCoords);
+        console.log("📍 Accuracy:", data.accuracy, "meters");
+
+        return true;
+      } else {
+        console.log("⚠️ Could not get location from Google API");
+        return false;
+      }
     } catch (error) {
-      console.error("Error checking location settings:", error);
-      setUserLocation(null);
-      return null;
+      console.error("❌ Error getting location via Google API:", error);
+
+      // Fallback to Expo Location if Google API fails
+      try {
+        console.log("📍 Falling back to Expo Location...");
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          console.log("⚠️ Location permission denied");
+          return false;
+        }
+
+        let location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+
+        const userCoords = {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        };
+
+        setUserLocation(userCoords);
+        setLocationEnabled(true);
+
+        await AsyncStorage.setItem("userLocation", JSON.stringify(userCoords));
+        await AsyncStorage.setItem("locationEnabled", "true");
+
+        console.log("📍 Location obtained via Expo Location:", userCoords);
+        return true;
+      } catch (fallbackError) {
+        console.error("❌ Fallback location error:", fallbackError);
+        return false;
+      }
     }
   };
 
@@ -118,19 +169,77 @@ const HomeScreen = () => {
     return await checkAndGetLocation();
   };
 
+  // Check location settings and get location if enabled
+  const checkAndGetLocation = async () => {
+    try {
+      // First, try to get stored location
+      const storedLocation = await AsyncStorage.getItem("userLocation");
+      const locationSetting = await AsyncStorage.getItem("locationEnabled");
+
+      if (storedLocation && locationSetting === "true") {
+        const coords = JSON.parse(storedLocation);
+        setUserLocation(coords);
+        setLocationEnabled(true);
+        console.log("📍 Using stored location:", coords);
+        return coords;
+      }
+
+      // If no stored location, clear state
+      setUserLocation(null);
+      setLocationEnabled(false);
+      return null;
+    } catch (error) {
+      console.error("Error checking stored location:", error);
+      setUserLocation(null);
+      setLocationEnabled(false);
+      return null;
+    }
+  };
+
   // Add effect to check location settings when component mounts
   useEffect(() => {
     checkAndGetLocation();
   }, []);
 
-  // Add effect to listen for location setting changes (optional - for real-time updates)
+  // Load user's current total points on app start
   useEffect(() => {
-    const interval = setInterval(() => {
-      checkAndGetLocation();
-    }, 5000); // Check every 5 seconds
+    const loadUserPoints = async () => {
+      try {
+        if (user?.id) {
+          const storedPoints = await AsyncStorage.getItem(
+            `userTotalPoints_${user.id}`
+          );
+          if (storedPoints) {
+            setUserTotalPoints(parseInt(storedPoints, 10));
+            console.log(`📊 Loaded user total points: ${storedPoints}`);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading user points:", error);
+      }
+    };
 
-    return () => clearInterval(interval);
-  }, []);
+    loadUserPoints();
+  }, [user?.id]);
+
+  // Save points when they change
+  useEffect(() => {
+    const saveUserPoints = async () => {
+      try {
+        if (user?.id && userTotalPoints >= 0) {
+          await AsyncStorage.setItem(
+            `userTotalPoints_${user.id}`,
+            userTotalPoints.toString()
+          );
+          console.log(`💾 Saved user total points: ${userTotalPoints}`);
+        }
+      } catch (error) {
+        console.error("Error saving user points:", error);
+      }
+    };
+
+    saveUserPoints();
+  }, [userTotalPoints, user?.id]);
 
   // Haversine formula to calculate distance between two lat/lng points in meters
   const calculateDistance = (
@@ -183,41 +292,55 @@ const HomeScreen = () => {
       );
     }
     if (filter === "location") {
-      // Check if location services are enabled
+      // Check if location services are enabled and user location is available
       if (!locationEnabled || !userLocation) {
-        // If location is disabled or not available, fallback to alphabetical sorting
-        return [...data].sort((a, b) => {
-          const getLocationString = (loc: any) => {
-            if (loc && typeof loc === "object") {
-              if ("address" in loc && typeof loc.address === "string") {
-                return loc.address;
-              }
-              if (loc.type === "Point" && Array.isArray(loc.coordinates)) {
-                return loc.coordinates.join(",");
-              }
-            }
-            return String(loc || "");
-          };
-          return getLocationString(a.location).localeCompare(
-            getLocationString(b.location)
-          );
-        });
+        console.log("⚠️ Location disabled or unavailable, showing all tasks");
+        // If location is disabled, show all tasks unsorted
+        return [...data];
       }
+
+      console.log("📍 Sorting by location. User location:", userLocation);
 
       // Sort by distance (closest first)
       return [...data].sort((a, b) => {
-        // Get task coordinates
+        // Get task coordinates - fix the coordinate extraction
         const getTaskCoordinates = (task: any) => {
-          if (
-            task.location &&
-            task.location.type === "Point" &&
-            Array.isArray(task.location.coordinates)
-          ) {
-            return {
-              longitude: task.location.coordinates[0],
-              latitude: task.location.coordinates[1],
-            };
+          // Check if task has location with coordinates
+          if (task.location) {
+            // Handle GeoJSON Point format
+            if (
+              task.location.type === "Point" &&
+              Array.isArray(task.location.coordinates) &&
+              task.location.coordinates.length >= 2
+            ) {
+              return {
+                longitude: parseFloat(task.location.coordinates[0]),
+                latitude: parseFloat(task.location.coordinates[1]),
+              };
+            }
+
+            // Handle direct lat/lng properties
+            if (task.location.latitude && task.location.longitude) {
+              return {
+                longitude: parseFloat(task.location.longitude),
+                latitude: parseFloat(task.location.latitude),
+              };
+            }
+
+            // Handle lat/lng properties
+            if (task.location.lat && task.location.lng) {
+              return {
+                longitude: parseFloat(task.location.lng),
+                latitude: parseFloat(task.location.lat),
+              };
+            }
           }
+
+          console.log(
+            "⚠️ Task has no valid coordinates:",
+            task._id,
+            task.location
+          );
           return null;
         };
 
@@ -226,10 +349,16 @@ const HomeScreen = () => {
 
         // If either task doesn't have coordinates, put it at the end
         if (!aCoords && !bCoords) return 0;
-        if (!aCoords) return 1;
-        if (!bCoords) return -1;
+        if (!aCoords) {
+          console.log("⚠️ Task A has no coordinates:", a._id);
+          return 1; // Push to end
+        }
+        if (!bCoords) {
+          console.log("⚠️ Task B has no coordinates:", b._id);
+          return -1; // Keep A before B
+        }
 
-        // Calculate distances
+        // Calculate distances using Haversine formula
         const distanceA = calculateDistance(
           userLocation.latitude,
           userLocation.longitude,
@@ -244,7 +373,14 @@ const HomeScreen = () => {
           bCoords.longitude
         );
 
-        return distanceA - distanceB; // Sort by distance (ascending)
+        console.log(
+          `📏 Task ${a._id}: ${(distanceA / 1000).toFixed(2)}km away`
+        );
+        console.log(
+          `📏 Task ${b._id}: ${(distanceB / 1000).toFixed(2)}km away`
+        );
+
+        return distanceA - distanceB; // Sort by distance (ascending - closest first)
       });
     }
     return data;
@@ -300,6 +436,21 @@ const HomeScreen = () => {
     }
   };
 
+  const handleTaskComplete = (pointsEarned: number) => {
+    console.log(`🎉 Task completed! Points earned: ${pointsEarned}`);
+
+    setUserTotalPoints((prevTotal) => {
+      const newTotal = prevTotal + pointsEarned;
+      console.log(
+        `📊 Total points updated: ${prevTotal} + ${pointsEarned} = ${newTotal}`
+      );
+      return newTotal;
+    });
+
+    // Refresh tasks to remove completed ones
+    fetchTasks();
+  };
+
   return (
     <View style={styles.container}>
       {loading && (
@@ -345,241 +496,201 @@ const HomeScreen = () => {
       {/* Progress Section */}
       <View style={styles.progressSection}>
         <Text style={styles.sectionTitle}>Your Progress</Text>
-        <View style={styles.progressCard}>
-          <MilestoneProgressBar points={userPoints} maxPoints={maxPoints} />
-          <View style={styles.progressStats}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{userPoints}</Text>
-              <Text style={styles.statLabel}>Points</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{maxPoints - userPoints}</Text>
-              <Text style={styles.statLabel}>To Goal</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>
-                {Math.round((userPoints / maxPoints) * 100)}%
+        <MilestoneProgressBar points={userTotalPoints} maxPoints={maxPoints} />
+      </View>
+
+      {/* Clean Modern Tabs - Move to top area */}
+      <View style={styles.modernTabSection}>
+        <View style={styles.tabContainer}>
+          {[
+            { key: "new", label: "New", count: newTasks.length },
+            { key: "assigned", label: "Assigned", count: assignedTasks.length },
+            {
+              key: "complete",
+              label: "Complete",
+              count: completedTasks.length,
+            },
+          ].map((tabItem) => (
+            <TouchableOpacity
+              key={tabItem.key}
+              onPress={() => setTab(tabItem.key as any)}
+              style={[
+                styles.modernTab,
+                tab === tabItem.key && styles.modernTabActive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.modernTabText,
+                  tab === tabItem.key && styles.modernTabTextActive,
+                ]}
+              >
+                {tabItem.label}
               </Text>
-              <Text style={styles.statLabel}>Progress</Text>
-            </View>
-          </View>
+              {tabItem.count > 0 && (
+                <View style={styles.cleanBadge}>
+                  <Text style={styles.cleanBadgeText}>{tabItem.count}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
 
-      {/* Modern Tab Navigation */}
-      <View style={styles.modernTabContainer}>
-        <View style={styles.tabRow}>
-          <TouchableOpacity
-            onPress={() => setTab("new")}
-            style={[styles.tab, tab === "new" && styles.tabActive]}
-          >
-            <View style={styles.tabContent}>
-              <Ionicons
-                name="add-circle-outline"
-                size={18}
-                color={tab === "new" ? "#fff" : "#666"}
-              />
-              <Text
-                style={[styles.tabText, tab === "new" && styles.tabTextActive]}
-              >
-                New
-              </Text>
-              {newTasks.length > 0 && (
-                <View style={styles.tabBadge}>
-                  <Text style={styles.tabBadgeText}>{newTasks.length}</Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setTab("assigned")}
-            style={[styles.tab, tab === "assigned" && styles.tabActive]}
-          >
-            <View style={styles.tabContent}>
-              <Ionicons
-                name="person-outline"
-                size={18}
-                color={tab === "assigned" ? "#fff" : "#666"}
-              />
-              <Text
-                style={[
-                  styles.tabText,
-                  tab === "assigned" && styles.tabTextActive,
-                ]}
-              >
-                Assigned
-              </Text>
-              {assignedTasks.length > 0 && (
-                <View style={styles.tabBadge}>
-                  <Text style={styles.tabBadgeText}>
-                    {assignedTasks.length}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setTab("complete")}
-            style={[styles.tab, tab === "complete" && styles.tabActive]}
-          >
-            <View style={styles.tabContent}>
-              <Ionicons
-                name="checkmark-done-outline"
-                size={18}
-                color={tab === "complete" ? "#fff" : "#666"}
-              />
-              <Text
-                style={[
-                  styles.tabText,
-                  tab === "complete" && styles.tabTextActive,
-                ]}
-              >
-                Complete
-              </Text>
-              {completedTasks.length > 0 && (
-                <View style={styles.tabBadge}>
-                  <Text style={styles.tabBadgeText}>
-                    {completedTasks.length}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Tasks Section */}
-      <View style={styles.tasksSection}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
+      {/* Tasks Section - Now takes full space */}
+      <View style={styles.cleanTasksSection}>
+        <View style={styles.cleanSectionHeader}>
+          <Text style={styles.cleanSectionTitle}>
             {tab === "new"
-              ? "New Tasks"
+              ? "Available Tasks"
               : tab === "assigned"
               ? "Your Tasks"
-              : "Completed Tasks"}
+              : "Completed"}
           </Text>
 
-          {/* Modern Filter Dropdown */}
           <TouchableOpacity
-            style={styles.filterContainer}
+            style={styles.cleanFilter}
             onPress={() => setShowFilterMenu(!showFilterMenu)}
           >
-            <Ionicons
-              name={
-                filter === "newest"
-                  ? "time-outline"
-                  : filter === "oldest"
-                  ? "hourglass-outline"
-                  : "location-outline"
-              }
-              size={16}
-              color="#666"
-            />
-            <Text style={styles.filterText}>
+            <Ionicons name="options-outline" size={18} color="#666" />
+            <Text style={styles.cleanFilterText}>
               {filter === "newest"
-                ? "Newest"
+                ? "Recent"
                 : filter === "oldest"
                 ? "Oldest"
-                : "Location"}
+                : "Nearby"}
             </Text>
             <Ionicons
               name={showFilterMenu ? "chevron-up" : "chevron-down"}
-              size={16}
-              color="#666"
+              size={14}
+              color="#999"
             />
           </TouchableOpacity>
+
+          {/* Filter Dropdown Menu */}
+          {showFilterMenu && (
+            <View style={styles.filterMenu}>
+              <TouchableOpacity
+                style={[
+                  styles.filterMenuItem,
+                  filter === "newest" && styles.filterMenuItemActive,
+                ]}
+                onPress={() => {
+                  setFilter("newest");
+                  setShowFilterMenu(false);
+                }}
+              >
+                <Ionicons
+                  name="time-outline"
+                  size={18}
+                  color={filter === "newest" ? "#FF9800" : "#666"}
+                />
+                <Text
+                  style={[
+                    styles.filterMenuText,
+                    filter === "newest" && styles.filterMenuTextActive,
+                  ]}
+                >
+                  Recent
+                </Text>
+                {filter === "newest" && (
+                  <Ionicons name="checkmark" size={16} color="#FF9800" />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.filterMenuItem,
+                  filter === "oldest" && styles.filterMenuItemActive,
+                ]}
+                onPress={() => {
+                  setFilter("oldest");
+                  setShowFilterMenu(false);
+                }}
+              >
+                <Ionicons
+                  name="hourglass-outline"
+                  size={18}
+                  color={filter === "oldest" ? "#FF9800" : "#666"}
+                />
+                <Text
+                  style={[
+                    styles.filterMenuText,
+                    filter === "oldest" && styles.filterMenuTextActive,
+                  ]}
+                >
+                  Oldest
+                </Text>
+                {filter === "oldest" && (
+                  <Ionicons name="checkmark" size={16} color="#FF9800" />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.filterMenuItem,
+                  filter === "location" && styles.filterMenuItemActive,
+                ]}
+                onPress={async () => {
+                  // Check if location is available
+                  if (!locationEnabled || !userLocation) {
+                    console.log("📍 Location not available, requesting...");
+
+                    // Show loading state
+                    setShowFilterMenu(false);
+
+                    const success = await requestLocationPermission();
+                    if (!success) {
+                      Alert.alert(
+                        "Location Required",
+                        "We need your location to show nearby tasks. Please enable location services or try again.",
+                        [
+                          { text: "Cancel", style: "cancel" },
+                          {
+                            text: "Try Again",
+                            onPress: async () => {
+                              const retry = await requestLocationPermission();
+                              if (retry) {
+                                setFilter("location");
+                              }
+                            },
+                          },
+                        ]
+                      );
+                      return;
+                    }
+                  }
+
+                  setFilter("location");
+                  setShowFilterMenu(false);
+                }}
+              >
+                <View style={styles.locationIconContainer}>
+                  <Ionicons
+                    name="location-outline"
+                    size={18}
+                    color={filter === "location" ? "#FF9800" : "#666"}
+                  />
+                  {locationEnabled && userLocation && (
+                    <View style={styles.locationStatusDot} />
+                  )}
+                </View>
+                <Text
+                  style={[
+                    styles.filterMenuText,
+                    filter === "location" && styles.filterMenuTextActive,
+                  ]}
+                >
+                  Nearby
+                  {!locationEnabled || !userLocation ? " (Get Location)" : ""}
+                </Text>
+                {filter === "location" && (
+                  <Ionicons name="checkmark" size={16} color="#FF9800" />
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
-
-        {/* Filter Menu Dropdown */}
-        {showFilterMenu && (
-          <View style={styles.filterMenu}>
-            <TouchableOpacity
-              style={[
-                styles.filterMenuItem,
-                filter === "newest" && styles.filterMenuItemActive,
-              ]}
-              onPress={() => {
-                setFilter("newest");
-                setShowFilterMenu(false);
-              }}
-            >
-              <Ionicons
-                name="time-outline"
-                size={18}
-                color={filter === "newest" ? "#FF9800" : "#666"}
-              />
-              <Text
-                style={[
-                  styles.filterMenuText,
-                  filter === "newest" && styles.filterMenuTextActive,
-                ]}
-              >
-                Newest First
-              </Text>
-              {filter === "newest" && (
-                <Ionicons name="checkmark" size={18} color="#FF9800" />
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.filterMenuItem,
-                filter === "oldest" && styles.filterMenuItemActive,
-              ]}
-              onPress={() => {
-                setFilter("oldest");
-                setShowFilterMenu(false);
-              }}
-            >
-              <Ionicons
-                name="hourglass-outline"
-                size={18}
-                color={filter === "oldest" ? "#FF9800" : "#666"}
-              />
-              <Text
-                style={[
-                  styles.filterMenuText,
-                  filter === "oldest" && styles.filterMenuTextActive,
-                ]}
-              >
-                Oldest First
-              </Text>
-              {filter === "oldest" && (
-                <Ionicons name="checkmark" size={18} color="#FF9800" />
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.filterMenuItem,
-                filter === "location" && styles.filterMenuItemActive,
-              ]}
-              onPress={() => {
-                setFilter("location");
-                setShowFilterMenu(false);
-              }}
-            >
-              <Ionicons
-                name="location-outline"
-                size={18}
-                color={filter === "location" ? "#FF9800" : "#666"}
-              />
-              <Text
-                style={[
-                  styles.filterMenuText,
-                  filter === "location" && styles.filterMenuTextActive,
-                ]}
-              >
-                By Location
-              </Text>
-              {filter === "location" && (
-                <Ionicons name="checkmark" size={18} color="#FF9800" />
-              )}
-            </TouchableOpacity>
-          </View>
-        )}
 
         <FlatList
           data={getTabData()}
@@ -591,28 +702,28 @@ const HomeScreen = () => {
               <TaskCard
                 task={item}
                 onSignUp={handleSignUp}
-                onComplete={handleCompleteTask} // Use the new direct completion handler
-                onTaskUpdate={fetchTasks} // Add this to refresh the list
+                onComplete={handleTaskComplete}
+                onTaskUpdate={fetchTasks}
               />
             )
           }
           ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Ionicons name={getEmptyIcon() as any} size={64} color="#ddd" />
-              <Text style={styles.emptyStateTitle}>
-                {tab === "new"
-                  ? "No New Tasks"
-                  : tab === "assigned"
-                  ? "No Assigned Tasks"
-                  : "No Completed Tasks"}
-              </Text>
-              <Text style={styles.emptyStateSubtitle}>{getEmptyMessage()}</Text>
+            <View style={styles.cleanEmptyState}>
+              <View style={styles.emptyIcon}>
+                <Ionicons
+                  name={getEmptyIcon() as any}
+                  size={48}
+                  color="#e0e0e0"
+                />
+              </View>
+              <Text style={styles.cleanEmptyTitle}>No tasks yet</Text>
+              <Text style={styles.cleanEmptySubtitle}>{getEmptyMessage()}</Text>
             </View>
           }
           refreshing={refreshing}
           onRefresh={onRefresh}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={styles.cleanListContent}
         />
       </View>
       {selectedDate && (
@@ -746,26 +857,37 @@ const styles = StyleSheet.create({
     color: "#666",
     marginTop: 2, // Reduced from 4
   },
-  modernTabContainer: {
+  floatingTabContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: "#fff",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingTop: 8, // Reduce top padding to prevent overlap
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingVertical: 8,
+    paddingBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 8,
+    zIndex: 1000,
   },
-  tabRow: {
+  floatingTabWrapper: {
     flexDirection: "row",
-    backgroundColor: "#f8f9fa",
-    borderRadius: 12,
-    padding: 4,
+    justifyContent: "space-around",
   },
-  tab: {
+  floatingTab: {
     flex: 1,
-    borderRadius: 8,
+    alignItems: "center",
     paddingVertical: 12,
-    paddingHorizontal: 8,
-    marginHorizontal: 2,
+    borderRadius: 12,
+    marginHorizontal: 4,
+    position: "relative",
+    overflow: "hidden",
   },
-  tabActive: {
+  floatingTabActive: {
     backgroundColor: "#FF9800",
     shadowColor: "#FF9800",
     shadowOpacity: 0.3,
@@ -773,28 +895,30 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
   },
-  tabContent: {
+  activeTabGlow: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 152, 0, 0.2)",
+    zIndex: -1,
+  },
+  floatingTabContent: {
+    flexDirection: "column",
+    alignItems: "center",
+  },
+  tabIconWrapper: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    position: "relative",
-    minHeight: 24,
   },
-  tabText: {
-    color: "#666",
-    fontWeight: "600",
-    fontSize: 13,
-    marginLeft: 4,
-    textAlign: "center",
-  },
-  tabTextActive: {
-    color: "#fff",
-  },
-  tabBadge: {
+  floatingBadge: {
     position: "absolute",
-    top: -12,
-    right: -6,
-    backgroundColor: "#ff4757",
+    top: -4,
+    right: -4,
+    backgroundColor: "#FF4757",
     borderRadius: 10,
     minWidth: 18,
     height: 18,
@@ -803,7 +927,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     zIndex: 10,
   },
-  tabBadgeText: {
+  floatingBadgeText: {
     color: "#fff",
     fontSize: 10,
     fontWeight: "bold",
@@ -919,5 +1043,139 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     zIndex: 1,
+  },
+  /* Clean Modern Tabs - Move to top area */
+  modernTabSection: {
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+    paddingTop: 8,
+    paddingBottom: 4,
+    zIndex: 10,
+  },
+  tabContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingHorizontal: 20,
+  },
+  modernTab: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginHorizontal: 4,
+    position: "relative",
+  },
+  modernTabActive: {
+    backgroundColor: "#FF9800",
+    shadowColor: "#FF9800",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  modernTabText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#666",
+  },
+  modernTabTextActive: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  cleanBadge: {
+    backgroundColor: "#FF4757",
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+    position: "absolute",
+    top: -4,
+    right: -4,
+  },
+  cleanBadgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+  /* Tasks Section - Now takes full space */
+  cleanTasksSection: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  cleanSectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  cleanSectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#222",
+  },
+  cleanFilter: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  cleanFilterText: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500",
+    marginLeft: 4,
+  },
+  cleanEmptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+  },
+  emptyIcon: {
+    marginBottom: 16,
+  },
+  cleanEmptyTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#222",
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  cleanEmptySubtitle: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    paddingHorizontal: 40,
+  },
+  cleanListContent: {
+    paddingBottom: 40,
+  },
+  locationIconContainer: {
+    position: "relative",
+    marginRight: 12,
+  },
+  locationStatusDot: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#4CAF50",
+    borderWidth: 1,
+    borderColor: "#fff",
   },
 });

@@ -1,31 +1,38 @@
 const mongoose = require("mongoose");
 
 const NotificationSchema = new mongoose.Schema({
-  userId: { type: String, required: true }, // Can be "all" for broadcast or specific user ID
   title: { type: String, required: true },
   message: { type: String, required: true },
   type: {
     type: String,
-    required: true,
     enum: [
-      "new_task",
-      "task_assigned",
       "task_completed",
+      "task_assigned",
       "task_reminder",
       "general",
-    ], // Add new_task here
+      "new_task",
+    ],
     default: "general",
   },
-  taskId: { type: mongoose.Schema.Types.ObjectId, ref: "Task" },
-  status: { type: String, enum: ["unread", "read"], default: "unread" },
-  createdAt: { type: Date, default: Date.now },
-  // Add these fields for task completion notifications
+  userId: { type: String, required: true },
+  taskId: { type: String },
+  organizationInfo: {
+    name: { type: String },
+    image: { type: String },
+  },
+  taskInfo: {
+    title: { type: String },
+    location: { type: String },
+    time: { type: Date },
+  },
   completedBy: {
     id: { type: String },
     name: { type: String },
     image: { type: String },
   },
-  read: { type: Boolean, default: false }, // For backward compatibility
+  status: { type: String, enum: ["unread", "read"], default: "unread" },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
 });
 
 module.exports = mongoose.model("Notification", NotificationSchema);

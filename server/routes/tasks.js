@@ -38,26 +38,33 @@ router.post("/", async (req, res) => {
 
     // Create notification with points information
     const notification = new Notification({
-      userId: "all", // or specific user IDs
+      userId: "all", // Send to all users
       title: "New Task Available!",
       message: `${task.title} - ${task.description.substring(0, 100)}${
         task.description.length > 100 ? "..." : ""
-      } (${task.pointsReward} ${
-        task.pointsReward === 1 ? "point" : "points"
-      }, ${task.estimatedHours}h)`,
+      }`,
       type: "new_task",
       taskId: task._id,
+      organizationInfo: {
+        name: req.body.organizationName || "Organization", // Add organization name from request
+        image: req.body.organizationImage || null, // Add organization image from request
+      },
+      taskInfo: {
+        title: task.title,
+        location: task.locationLabel || "Location not specified",
+        time: task.time,
+      },
       status: "unread",
       createdAt: new Date(),
     });
 
     await notification.save();
 
-    // Emit real-time notification via Socket.IO
+    // Emit to all connected users
     const io = req.app.get("io");
     if (io) {
       io.emit("new-notification", notification);
-      console.log("Notification emitted via Socket.IO");
+      console.log("New task notification emitted to all users");
     }
 
     res.status(201).json(newTask);
@@ -201,9 +208,8 @@ router.get("/completed", async (req, res) => {
   try {
     const completedTasks = await Task.find({ completed: true });
     res.json(completedTasks);
-  } catch (error) {
-    console.error("Error fetching completed tasks:", error);
-    res.status(500).json({ message: "Error fetching completed tasks" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 

@@ -14,25 +14,34 @@ const MilestoneProgressBar = ({
   maxPoints = 120,
 }: MilestoneProgressBarProps) => {
   const progressAnimation = useRef(new Animated.Value(0)).current;
+  const fadeAnimation = useRef(new Animated.Value(0)).current;
 
   const percentage =
     maxPoints > 0 ? Math.min((points / maxPoints) * 100, 100) : 0;
   const milestones = [30, 60, 90, 120];
 
   useEffect(() => {
+    // Smooth progress animation
     Animated.timing(progressAnimation, {
       toValue: percentage / 100,
-      duration: 800,
+      duration: 1500,
       useNativeDriver: false,
     }).start();
-  }, [percentage, progressAnimation]);
+
+    // Fade in animation
+    Animated.timing(fadeAnimation, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    }).start();
+  }, [percentage, progressAnimation, fadeAnimation]);
 
   const getProgressColor = () => {
-    if (points >= 120) return "#4CAF50";
-    if (points >= 90) return "#FF9800";
-    if (points >= 60) return "#2196F3";
-    if (points >= 30) return "#9C27B0";
-    return "#FFC107";
+    if (points >= 120) return "#10B981"; // Emerald
+    if (points >= 90) return "#F59E0B"; // Amber
+    if (points >= 60) return "#3B82F6"; // Blue
+    if (points >= 30) return "#8B5CF6"; // Purple
+    return "#6B7280"; // Gray
   };
 
   const getCurrentLevel = () => {
@@ -51,31 +60,32 @@ const MilestoneProgressBar = ({
   const pointsToNext = getNextMilestone() - points;
 
   return (
-    <View style={styles.container}>
-      {/* Compact Header */}
+    <Animated.View style={[styles.container, { opacity: fadeAnimation }]}>
+      {/* Modern Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.title}>Your Progress</Text>
-          <View style={styles.levelBadge}>
-            <Text style={[styles.levelText, { color: getProgressColor() }]}>
-              {getCurrentLevel()}
-            </Text>
-          </View>
+        <View style={styles.levelContainer}>
+          <View
+            style={[styles.levelDot, { backgroundColor: getProgressColor() }]}
+          />
+          <Text style={[styles.levelText, { color: getProgressColor() }]}>
+            {getCurrentLevel()}
+          </Text>
         </View>
-        <View style={styles.pointsDisplay}>
+
+        <View style={styles.pointsContainer}>
           <Text style={[styles.currentPoints, { color: getProgressColor() }]}>
             {points}
           </Text>
-          <Text style={styles.maxPoints}>/{maxPoints}</Text>
+          <Text style={styles.maxPointsText}>/{maxPoints}</Text>
         </View>
       </View>
 
-      {/* Compact Progress Bar */}
-      <View style={styles.progressSection}>
+      {/* Modern Progress Track */}
+      <View style={styles.progressContainer}>
         <View style={styles.progressTrack}>
           <Animated.View
             style={[
-              styles.progressBar,
+              styles.progressFill,
               {
                 width: progressAnimation.interpolate({
                   inputRange: [0, 1],
@@ -87,45 +97,46 @@ const MilestoneProgressBar = ({
             ]}
           />
 
-          {/* Compact Milestone Dots */}
-          {milestones.map((milestone) => {
+          {/* Modern Milestone Indicators */}
+          {milestones.map((milestone, index) => {
             const milestonePercentage = (milestone / maxPoints) * 100;
-            const isAchieved = points >= milestone;
+            const isCompleted = points >= milestone;
 
             return (
               <View
                 key={milestone}
                 style={[
-                  styles.milestone,
+                  styles.milestoneIndicator,
                   {
                     left: `${milestonePercentage}%`,
-                    backgroundColor: isAchieved ? getProgressColor() : "#fff",
-                    borderColor: isAchieved ? getProgressColor() : "#ddd",
-                    transform: [{ translateX: -4 }],
+                    backgroundColor: isCompleted
+                      ? getProgressColor()
+                      : "#E5E7EB",
                   },
                 ]}
               >
-                {isAchieved && (
-                  <Ionicons name="checkmark" size={6} color="#fff" />
+                {isCompleted && (
+                  <Ionicons name="checkmark" size={10} color="#fff" />
                 )}
               </View>
             );
           })}
         </View>
+      </View>
 
-        {/* Compact Stats Row */}
-        <View style={styles.statsRow}>
-          <Text style={styles.progressText}>
-            {Math.round(percentage)}% Complete
-          </Text>
-          {points < maxPoints && (
-            <Text style={styles.nextMilestoneText}>
-              {pointsToNext} to next milestone
-            </Text>
-          )}
+      {/* Clean Stats */}
+      <View style={styles.statsRow}>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{pointsToNext}</Text>
+          <Text style={styles.statLabel}>to next milestone</Text>
+        </View>
+
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{Math.round(percentage)}%</Text>
+          <Text style={styles.statLabel}>complete</Text>
         </View>
       </View>
-    </View>
+    </Animated.View>
   );
 };
 
@@ -133,101 +144,101 @@ export default MilestoneProgressBar;
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
-    marginHorizontal: 16,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 24,
     marginVertical: 8,
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
     elevation: 2,
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 24,
   },
-  headerLeft: {
+  levelContainer: {
     flexDirection: "row",
     alignItems: "center",
-    flex: 1,
   },
-  title: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1a1a1a",
-    marginRight: 12,
-  },
-  levelBadge: {
-    backgroundColor: "#f8f9fa",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
+  levelDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
   },
   levelText: {
-    fontSize: 10,
+    fontSize: 16,
     fontWeight: "600",
+    letterSpacing: -0.2,
   },
-  pointsDisplay: {
+  pointsContainer: {
     flexDirection: "row",
     alignItems: "baseline",
   },
   currentPoints: {
-    fontSize: 20,
-    fontWeight: "800",
+    fontSize: 32,
+    fontWeight: "700",
+    letterSpacing: -1.5,
   },
-  maxPoints: {
-    fontSize: 14,
-    color: "#666",
+  maxPointsText: {
+    fontSize: 18,
     fontWeight: "500",
+    color: "#9CA3AF",
+    marginLeft: 2,
   },
-  progressSection: {
-    gap: 8,
+  progressContainer: {
+    marginBottom: 20,
   },
   progressTrack: {
     height: 6,
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#F3F4F6",
     borderRadius: 3,
     position: "relative",
     overflow: "visible",
   },
-  progressBar: {
-    height: 6,
+  progressFill: {
+    height: "100%",
     borderRadius: 3,
-    position: "relative",
-  },
-  milestone: {
     position: "absolute",
-    top: -2,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    borderWidth: 1.5,
+    top: 0,
+    left: 0,
+  },
+  milestoneIndicator: {
+    position: "absolute",
+    top: -3,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#fff",
+    transform: [{ translateX: -6 }],
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
   },
   statsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+  },
+  statItem: {
     alignItems: "center",
   },
-  progressText: {
-    fontSize: 12,
-    color: "#666",
-    fontWeight: "500",
+  statValue: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: 2,
   },
-  nextMilestoneText: {
+  statLabel: {
     fontSize: 12,
-    color: "#666",
     fontWeight: "500",
+    color: "#6B7280",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
 });

@@ -1,10 +1,11 @@
 import { useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
   FlatList,
+  Image,
   RefreshControl,
   StyleSheet,
   Text,
@@ -14,106 +15,137 @@ import {
 import io from "socket.io-client";
 import { fetchNotifications, markNotificationAsRead } from "../../../api";
 
-// Use the correct server URL (same as your organization notification)
 const socket = io("http://128.140.74.218:5001");
 
-type Notification = {
+type UserNotification = {
   _id: string;
   title: string;
   message: string;
-  type: "new_task" | "task_assigned" | "task_reminder" | "general";
+  type: "new_task" | "task_reminder" | "general";
   userId: string;
   taskId?: string;
+  organizationInfo?: {
+    name: string;
+    image?: string;
+  };
+  taskInfo?: {
+    title: string;
+    location: string;
+    time: string;
+  };
   status: "unread" | "read";
   createdAt: string;
   updatedAt: string;
 };
 
-const NotificationsScreen = () => {
+const UserNotificationsScreen = () => {
   const { user } = useUser();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const router = useRouter();
+  const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user?.id) return;
 
-    const getNotifications = async () => {
-      try {
-        console.log("Fetching notifications for user:", user.id);
-        const response = await fetchNotifications(user.id);
-        console.log("API Response:", response);
+    console.log("🔍 Setting up user notifications for:", user.id);
 
-        // Handle axios response structure
-        const notificationsData = response.data?.data || response.data || [];
-        console.log("Notifications data:", notificationsData);
-
-        // Filter notifications for new tasks (for regular users)
-        const userNotifications = notificationsData.filter(
-          (notification: Notification) =>
-            (notification.userId === user.id ||
-              notification.userId === "all") &&
-            notification.type === "new_task"
-        );
-
-        console.log("Filtered user notifications:", userNotifications);
-        setNotifications(userNotifications);
-      } catch (error) {
-        console.error("Error fetching notifications:", error);
-        Alert.alert("Error", "Failed to load notifications. Please try again.");
-      }
-    };
-
-    getNotifications();
-
-    // Listen for real-time notifications for new tasks
+    // Join user room for real-time notifications
     socket.emit("join-user", user.id);
+    console.log(`📡 Joined user room: user_${user.id}`);
 
-    socket.on("new-notification", (notification: Notification) => {
-      console.log("Received new notification:", notification);
-      // Only add notification if it's a new task notification
-      if (
-        (notification.userId === user.id || notification.userId === "all") &&
-        notification.type === "new_task"
-      ) {
+    // Listen for new notifications
+    socket.on("new-notification", (notification) => {
+      console.log("🔔 Received new notification:", notification);
+
+      // Check if this notification is for this user
+      if (notification.userId === user.id || notification.userId === "all") {
         setNotifications((prev) => [notification, ...prev]);
       }
     });
 
-    // Clean up socket connection
+    // Initial fetch
+    fetchUserNotifications();
+
     return () => {
-      socket.off("new-notification");
       socket.emit("leave-user", user.id);
+      socket.off("new-notification");
     };
   }, [user]);
 
-  const handleRefresh = async () => {
+  const fetchUserNotifications = async () => {
     if (!user?.id) return;
 
-    setRefreshing(true);
     try {
+      console.log("🔍 Fetching notifications for user:", user.id);
       const response = await fetchNotifications(user.id);
+      console.log("📡 API Response:", response.data);
+
       const notificationsData = response.data?.data || response.data || [];
+
+      // Filter for user-relevant notifications (new tasks in their area)
       const userNotifications = notificationsData.filter(
-        (notification: Notification) =>
-          (notification.userId === user.id || notification.userId === "all") &&
-          notification.type === "new_task"
+        (notification: UserNotification) => {
+          return (
+            (notification.userId === user.id ||
+              notification.userId === "all") &&
+            (notification.type === "new_task" ||
+              notification.type === "task_reminder")
+          );
+        }
       );
-      setNotifications(userNotifications);
+
+      console.log("✅ User notifications:", userNotifications);
+
+      // BETTER: Create a single source of truth by merging all notifications
+      setNotifications((prev) => {
+        // Create a map to avoid duplicates using notification ID as key
+        const notificationMap = new Map();
+
+        // Add existing notifications first
+        prev.forEach((notification) => {
+          notificationMap.set(notification._id, notification);
+        });
+
+        // Add/update with fetched notifications
+        userNotifications.forEach((notification: UserNotification) => {
+          notificationMap.set(notification._id, notification);
+        });
+
+        // Convert back to array and sort by creation date (newest first)
+        const mergedNotifications = Array.from(notificationMap.values()).sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+
+        console.log(
+          `📊 Total notifications after merge: ${mergedNotifications.length}`
+        );
+        return mergedNotifications;
+      });
     } catch (error) {
-      console.error("Error refreshing notifications:", error);
-      Alert.alert("Error", "Failed to refresh notifications.");
+      console.error("❌ Error fetching notifications:", error);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchUserNotifications();
     setRefreshing(false);
   };
 
-  const handleNotificationPress = async (notification: Notification) => {
-    // Mark as read if not already read
+  const handleNotificationPress = async (notification: UserNotification) => {
+    // Mark as read if unread
     if (notification.status === "unread") {
       try {
         await markNotificationAsRead(notification._id);
         setNotifications((prev) =>
-          prev.map((n) =>
-            n._id === notification._id ? { ...n, status: "read" } : n
+          prev.map((item) =>
+            item._id === notification._id
+              ? { ...item, status: "read" as const }
+              : item
           )
         );
       } catch (error) {
@@ -121,40 +153,37 @@ const NotificationsScreen = () => {
       }
     }
 
-    // Navigate to home screen to see new tasks
-    router.push("/(tabs)/home");
+    // Navigate to task details or show more info
+    Alert.alert(notification.title, notification.message, [
+      { text: "OK", style: "default" },
+    ]);
   };
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case "new_task":
         return { name: "add-circle", color: "#4CAF50" };
-      case "task_assigned":
-        return { name: "person-add", color: "#FF9800" };
       case "task_reminder":
-        return { name: "time", color: "#2196F3" };
+        return { name: "time", color: "#FF9800" };
       default:
-        return { name: "notifications", color: "#FF9800" };
+        return { name: "notifications", color: "#2196F3" };
     }
   };
 
   const formatNotificationTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    const diffInMinutes = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60)
+    );
 
-    if (diffInHours < 1) {
-      const diffInMinutes = Math.floor(diffInHours * 60);
-      return `${diffInMinutes}m ago`;
-    } else if (diffInHours < 24) {
-      return `${Math.floor(diffInHours)}h ago`;
-    } else {
-      const diffInDays = Math.floor(diffInHours / 24);
-      return `${diffInDays}d ago`;
-    }
+    if (diffInMinutes < 1) return "Just now";
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    return `${Math.floor(diffInMinutes / 1440)}d ago`;
   };
 
-  const renderNotification = ({ item }: { item: Notification }) => {
+  const renderNotification = ({ item }: { item: UserNotification }) => {
     const iconData = getNotificationIcon(item.type);
 
     return (
@@ -166,12 +195,7 @@ const NotificationsScreen = () => {
         onPress={() => handleNotificationPress(item)}
         activeOpacity={0.7}
       >
-        <View
-          style={[
-            styles.notificationIcon,
-            { backgroundColor: iconData.color + "15" },
-          ]}
-        >
+        <View style={styles.notificationIcon}>
           <Ionicons
             name={iconData.name as any}
             size={24}
@@ -193,82 +217,119 @@ const NotificationsScreen = () => {
             {item.message}
           </Text>
 
-          {item.taskId && (
-            <View style={styles.taskSection}>
-              <TouchableOpacity style={styles.viewTaskButton}>
-                <Text style={styles.viewTaskButtonText}>View New Task</Text>
-                <Ionicons name="chevron-forward" size={16} color="#4CAF50" />
-              </TouchableOpacity>
+          {/* Organization and Task Info */}
+          {item.organizationInfo && (
+            <View style={styles.organizationSection}>
+              <View style={styles.organizationInfo}>
+                {item.organizationInfo.image ? (
+                  <Image
+                    source={{ uri: item.organizationInfo.image }}
+                    style={styles.organizationImage}
+                  />
+                ) : (
+                  <View style={styles.organizationImagePlaceholder}>
+                    <Ionicons name="business" size={16} color="#666" />
+                  </View>
+                )}
+                <Text style={styles.organizationText}>
+                  {item.organizationInfo.name}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Task Info */}
+          {item.taskInfo && (
+            <View style={styles.taskInfoSection}>
+              <Text style={styles.taskTitle} numberOfLines={1}>
+                📋 {item.taskInfo.title}
+              </Text>
+              <Text style={styles.taskLocation} numberOfLines={1}>
+                📍 {item.taskInfo.location}
+              </Text>
+              <Text style={styles.taskTime}>
+                🕒 {new Date(item.taskInfo.time).toLocaleDateString()} at{" "}
+                {new Date(item.taskInfo.time).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </Text>
             </View>
           )}
         </View>
 
-        {item.status === "unread" && (
-          <View
-            style={[
-              styles.unreadIndicator,
-              { backgroundColor: iconData.color },
-            ]}
-          />
-        )}
+        {item.status === "unread" && <View style={styles.unreadIndicator} />}
       </TouchableOpacity>
     );
   };
 
   const unreadCount = notifications.filter((n) => n.status === "unread").length;
 
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>Loading notifications...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>New Tasks</Text>
+          <Text style={styles.headerTitle}>Notifications</Text>
           {unreadCount > 0 && (
             <View style={styles.unreadBadge}>
               <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
             </View>
           )}
         </View>
+
+        {/* Back to Home Feed Button */}
         <TouchableOpacity
-          style={styles.headerIconButton}
+          style={styles.homeIconButton}
           onPress={() => router.push("/(tabs)/home")}
+          activeOpacity={0.7}
         >
-          <Ionicons name="home-outline" size={24} color="#333" />
+          <Ionicons name="home-outline" size={24} color="#222" />
         </TouchableOpacity>
       </View>
 
-      {/* Filter Info */}
+      {/* Info Banner */}
       <View style={styles.filterInfo}>
-        <Ionicons name="information-circle-outline" size={16} color="#666" />
+        <Ionicons name="information-circle" size={16} color="#FF9800" />
         <Text style={styles.filterInfoText}>
-          Get notified when new tasks are available
+          Showing new tasks available in your area
         </Text>
       </View>
 
       {/* Notifications List */}
       <FlatList
         data={notifications}
-        keyExtractor={(item: Notification) => item._id}
         renderItem={renderNotification}
+        keyExtractor={(item) => item._id}
         contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            colors={["#4CAF50"]}
-            tintColor="#4CAF50"
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="notifications-off-outline" size={64} color="#ddd" />
-            <Text style={styles.emptyStateTitle}>
-              No new task notifications
-            </Text>
+            <Ionicons name="notifications-off" size={64} color="#ccc" />
+            <Text style={styles.emptyStateTitle}>No notifications yet</Text>
             <Text style={styles.emptyStateSubtitle}>
-              You'll see notifications here when new tasks are created
+              You'll receive notifications when new tasks are available in your
+              area
             </Text>
+
+            {/* Back to Home Button in Empty State */}
+            <TouchableOpacity
+              style={styles.emptyStateHomeIcon}
+              onPress={() => router.push("/(tabs)/home")}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="home-outline" size={32} color="#222" />
+            </TouchableOpacity>
           </View>
         }
       />
@@ -276,11 +337,15 @@ const NotificationsScreen = () => {
   );
 };
 
-export default NotificationsScreen;
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#f8f9fa",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
     backgroundColor: "#f8f9fa",
   },
   header: {
@@ -304,7 +369,7 @@ const styles = StyleSheet.create({
     color: "#222",
   },
   unreadBadge: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: "#ff4757",
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -318,20 +383,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "bold",
   },
-  headerIconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#f8f9fa",
-    alignItems: "center",
-    justifyContent: "center",
-  },
   filterInfo: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: "#e8f5e8",
+    backgroundColor: "#fff3e0",
     marginHorizontal: 20,
     marginTop: 10,
     borderRadius: 8,
@@ -369,6 +426,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+    backgroundColor: "#f8f9fa",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -393,39 +451,71 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
     lineHeight: 20,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   notificationTime: {
     fontSize: 12,
     color: "#999",
     fontWeight: "500",
   },
-  taskSection: {
+  organizationSection: {
     flexDirection: "row",
-    justifyContent: "flex-end",
     alignItems: "center",
-    backgroundColor: "#f8fff8",
+    backgroundColor: "#f8f9fa",
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 8,
+  },
+  organizationInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  organizationImage: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    marginRight: 8,
+  },
+  organizationImagePlaceholder: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#e0e0e0",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
+  },
+  organizationText: {
+    fontSize: 12,
+    color: "#666",
+    fontWeight: "500",
+  },
+  taskInfoSection: {
+    backgroundColor: "#f0f7ff",
     borderRadius: 8,
     padding: 8,
   },
-  viewTaskButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#e8f5e8",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  viewTaskButtonText: {
-    fontSize: 10,
-    color: "#4CAF50",
+  taskTitle: {
+    fontSize: 13,
+    color: "#2196F3",
     fontWeight: "600",
-    marginRight: 4,
+    marginBottom: 2,
+  },
+  taskLocation: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 2,
+  },
+  taskTime: {
+    fontSize: 12,
+    color: "#666",
   },
   unreadIndicator: {
     width: 8,
     height: 8,
     borderRadius: 4,
+    backgroundColor: "#4CAF50",
     marginTop: 6,
     marginLeft: 8,
   },
@@ -448,4 +538,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     lineHeight: 20,
   },
+  homeIconButton: {
+    padding: 8,
+    borderRadius: 24,
+    backgroundColor: "#f0f7ff",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 2,
+  },
+  emptyStateHomeIcon: {
+    marginTop: 16,
+    padding: 12,
+    borderRadius: 24,
+    backgroundColor: "#f0f7ff",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 2,
+  },
 });
+
+export default UserNotificationsScreen;

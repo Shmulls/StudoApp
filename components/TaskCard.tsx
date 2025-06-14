@@ -17,7 +17,6 @@ import { useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
-  Alert,
   Animated,
   StyleSheet,
   Text,
@@ -29,9 +28,9 @@ import FeedbackModal from "./FeedbackModal";
 
 interface TaskCardProps {
   task: Task;
-  onSignUp: (taskId: string) => void;
-  onComplete: (taskId: string) => void;
-  onTaskUpdate?: (taskId: string) => void;
+  onSignUp?: (taskId: string) => void;
+  onComplete?: (pointsEarned: number) => void; // Add this line
+  onTaskUpdate?: () => void;
 }
 
 const TaskCard = ({
@@ -88,8 +87,8 @@ const TaskCard = ({
         userId: user?.id,
         feedback: feedback || null,
         pointsReward: task.pointsReward || 1,
-        userName: user?.fullName || user?.firstName || "Unknown User", // Add this line
-        userImage: user?.imageUrl || null, // Add this line
+        userName: user?.fullName || user?.firstName || "Unknown User",
+        userImage: user?.imageUrl || null,
       };
       console.log("📦 Request body:", requestBody);
 
@@ -105,124 +104,26 @@ const TaskCard = ({
       console.log("📡 Response status:", response.status);
       console.log("📡 Response ok:", response.ok);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("❌ API Error:", errorText);
-        throw new Error(
-          `HTTP error! status: ${response.status}, message: ${errorText}`
-        );
-      }
+      if (response.ok) {
+        const result = await response.json();
+        console.log("✅ Task completion response:", result);
 
-      // Try to parse the response
-      let result;
-      try {
-        const responseText = await response.text();
-        console.log("📄 Raw response text:", responseText);
-
-        if (responseText) {
-          result = JSON.parse(responseText);
-          console.log("✅ Task completion response:", result);
-
-          // Verify the completion was successful
-          if (result.message && result.message.includes("completed")) {
-            console.log("🎉 Task completion confirmed!");
-          }
+        // Call onComplete with the actual points earned
+        if (onComplete) {
+          const pointsEarned = task.pointsReward || 1;
+          console.log(`🎯 Calling onComplete with ${pointsEarned} points`);
+          onComplete(pointsEarned); // FIX: Pass pointsEarned instead of task._id
         }
-      } catch (parseError) {
-        console.error("⚠️ Error parsing response JSON:", parseError);
-        // Don't throw here - the HTTP status was successful
-        console.log("ℹ️ Treating as successful despite parse error");
-      }
 
-      // ALWAYS close modal and update UI if we got a successful HTTP status
-      console.log("🔄 Updating UI state...");
-
-      // Close the feedback modal and reset states
-      setShowFeedbackModal(false);
-      setFeedback("");
-      setSubmitting(false);
-
-      // Notify parent component (wrap in try-catch to isolate errors)
-      try {
-        console.log("📢 Notifying parent components...");
-        onComplete(task._id);
-
-        if (onTaskUpdate) {
-          console.log("🔄 Triggering task update...");
-          onTaskUpdate(task._id);
-        }
-      } catch (parentError) {
-        console.error("⚠️ Error in parent notifications:", parentError);
-        // Don't let parent errors affect our success flow
-      }
-
-      // Show success message with correct points
-      console.log("🎉 Showing success message...");
-      Alert.alert(
-        "Success! 🎉",
-        `Task completed successfully! You earned +${task.pointsReward || 1} ${
-          (task.pointsReward || 1) === 1 ? "point" : "points"
-        }!`
-      );
-    } catch (error) {
-      console.error("💥 Error in task completion flow:", error);
-      setSubmitting(false);
-
-      // Check if this is a network/fetch error vs a real API error
-      if (
-        typeof error === "object" &&
-        error !== null &&
-        "name" in error &&
-        "message" in error &&
-        (error as { name: string; message: string }).name === "TypeError" &&
-        (error as { name: string; message: string }).message.includes(
-          "Network request failed"
-        )
-      ) {
-        Alert.alert(
-          "Network Error",
-          "Please check your internet connection and try again."
-        );
-      } else if (
-        typeof error === "object" &&
-        error !== null &&
-        "message" in error &&
-        (error as { message: string }).message.includes("JSON")
-      ) {
-        // JSON parsing error - but might still be successful
-        console.log(
-          "🤔 JSON error detected, checking if task was completed anyway..."
-        );
-
-        // Close modal and refresh to see current state
         setShowFeedbackModal(false);
         setFeedback("");
-
-        Alert.alert(
-          "Task Updated",
-          "Your task may have been completed. Refreshing the task list...",
-          [
-            {
-              text: "OK",
-              onPress: () => {
-                if (onTaskUpdate) {
-                  onTaskUpdate(task._id);
-                }
-              },
-            },
-          ]
-        );
       } else {
-        // Real error
-        Alert.alert(
-          "Error",
-          `Failed to complete task: ${
-            typeof error === "object" && error !== null && "message" in error
-              ? (error as { message: string }).message
-              : String(error)
-          }\n\nPlease try again.`
-        );
+        console.error("❌ Failed to complete task:", response.status);
       }
+    } catch (error) {
+      console.error("❌ Error completing task:", error);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -238,7 +139,7 @@ const TaskCard = ({
         <Animated.View style={{ transform: [{ scale: scaleValue }] }}>
           <TouchableOpacity
             style={styles.modernRegisterButton}
-            onPress={() => onSignUp(task._id)}
+            onPress={() => onSignUp && onSignUp(task._id)}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
             activeOpacity={0.9}
@@ -256,7 +157,7 @@ const TaskCard = ({
         <View style={styles.assignedButtonContainer}>
           <TouchableOpacity
             style={styles.modernCancelButton}
-            onPress={() => onSignUp(task._id)} // This will toggle signedUp to false
+            onPress={() => onSignUp && onSignUp(task._id)} // This will toggle signedUp to false
             activeOpacity={0.8}
           >
             <Ionicons name="trash-outline" size={16} color="#ff4757" />
@@ -343,19 +244,13 @@ const TaskCard = ({
           {task.description}
         </Text>
 
-        {/* Task Stats Row */}
+        {/* Task Stats Row - Remove trophy, keep only duration */}
         <View style={styles.taskStatsRow}>
           <View style={styles.statItem}>
             <Ionicons name="time" size={14} color="#666" />
             <Text style={styles.statText}>{task.estimatedHours || 1}h</Text>
           </View>
-          <View style={styles.statItem}>
-            <Ionicons name="trophy" size={14} color="#FFD700" />
-            <Text style={styles.statText}>
-              {task.pointsReward || 1}{" "}
-              {(task.pointsReward || 1) === 1 ? "pt" : "pts"}
-            </Text>
-          </View>
+          {/* Remove the trophy stat item completely */}
         </View>
 
         <View style={styles.taskCardFooter}>
@@ -535,7 +430,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     backgroundColor: "#f8f9fa",
     borderRadius: 8,
-    gap: 16,
   },
   statItem: {
     flexDirection: "row",
