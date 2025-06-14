@@ -41,7 +41,11 @@ export default function FeedbackModal({
             <View style={styles.celebrationIcon}>
               <Ionicons name="trophy" size={32} color="#FFD700" />
             </View>
-            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <TouchableOpacity
+              testID="close-modal-btn"
+              style={styles.closeButton}
+              onPress={onClose}
+            >
               <Ionicons name="close" size={20} color="#666" />
             </TouchableOpacity>
           </View>
