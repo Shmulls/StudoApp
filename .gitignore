@@ -34,9 +34,7 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
-*.test.tsx
-*.spec.tsx
-
+# IDEs
 app-example
 npx expo start --android
 
