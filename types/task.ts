@@ -14,4 +14,7 @@ export interface Task {
   assignedUserId?: string | null;
   assignedUserName?: string | null;
   assignedUserImage?: string | null;
+  // New fields
+  pointsReward: number; // 1, 2, 3, or 4 points
+  estimatedHours: number; // 1, 2, 3, or 4 hours
 }

@@ -10,6 +10,9 @@ export const updateTask = (id, updatedTask) =>
 export const deleteTask = (id) => API.delete(`/tasks/${id}`);
 export const fetchCompletedTasks = () => API.get("/completed-tasks");
 
+// Add new function to get user points
+export const fetchUserPoints = (userId) => API.get(`/tasks/points/${userId}`);
+
 // Fix notification functions to use axios consistently
 export const fetchNotifications = async (userId) => {
   if (!userId) throw new Error("User ID is required");

@@ -23,6 +23,8 @@ type NewTask = {
   locationLabel: string;
   time: string;
   signedUp: boolean;
+  pointsReward: number; // New field
+  estimatedHours: number; // New field
 };
 
 type AddTaskModalProps = {
@@ -55,6 +57,11 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showPointsDropdown, setShowPointsDropdown] = useState(false);
+  const [showHoursDropdown, setShowHoursDropdown] = useState(false);
+
+  const pointsOptions = [1, 2, 3, 4];
+  const hoursOptions = [1, 2, 3, 4];
 
   // Google Places Autocomplete API
   const searchLocation = async (input: string): Promise<PlaceSuggestion[]> => {
@@ -186,9 +193,13 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
       locationLabel: "",
       time: "",
       signedUp: false,
+      pointsReward: 1, // Default to 1 point
+      estimatedHours: 1, // Default to 1 hour
     });
     setQuery("");
     setSuggestions([]);
+    setShowPointsDropdown(false);
+    setShowHoursDropdown(false);
   };
 
   const handleClose = () => {
@@ -290,10 +301,171 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
                 </View>
               </View>
 
+              {/* Reward & Time Section */}
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons name="gift-outline" size={20} color="#FF9800" />
+                  <Text style={styles.sectionTitle}>Reward & Time</Text>
+                </View>
+
+                {/* Points Reward Dropdown */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Points Reward *</Text>
+                  <TouchableOpacity
+                    style={styles.dropdownButton}
+                    onPress={() => {
+                      setShowPointsDropdown(!showPointsDropdown);
+                      setShowHoursDropdown(false);
+                    }}
+                  >
+                    <Ionicons name="star-outline" size={20} color="#666" />
+                    <View style={styles.dropdownContent}>
+                      <Text style={styles.dropdownText}>
+                        {newTask.pointsReward}{" "}
+                        {newTask.pointsReward === 1 ? "Point" : "Points"}
+                      </Text>
+                      <Text style={styles.dropdownSubtext}>
+                        How many points earned by this volunteering
+                      </Text>
+                    </View>
+                    <Ionicons
+                      name={showPointsDropdown ? "chevron-up" : "chevron-down"}
+                      size={20}
+                      color="#999"
+                    />
+                  </TouchableOpacity>
+
+                  {showPointsDropdown && (
+                    <View style={styles.dropdownMenu}>
+                      {pointsOptions.map((points) => (
+                        <TouchableOpacity
+                          key={points}
+                          style={[
+                            styles.dropdownOption,
+                            newTask.pointsReward === points &&
+                              styles.dropdownOptionSelected,
+                          ]}
+                          onPress={() => {
+                            setNewTask((t) => ({ ...t, pointsReward: points }));
+                            setShowPointsDropdown(false);
+                          }}
+                        >
+                          <View style={styles.optionContent}>
+                            <Ionicons
+                              name="star"
+                              size={16}
+                              color={
+                                newTask.pointsReward === points
+                                  ? "#FF9800"
+                                  : "#999"
+                              }
+                            />
+                            <Text
+                              style={[
+                                styles.optionText,
+                                newTask.pointsReward === points &&
+                                  styles.optionTextSelected,
+                              ]}
+                            >
+                              {points} {points === 1 ? "Point" : "Points"}
+                            </Text>
+                          </View>
+                          {newTask.pointsReward === points && (
+                            <Ionicons
+                              name="checkmark"
+                              size={18}
+                              color="#FF9800"
+                            />
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
+
+                {/* Estimated Hours Dropdown */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Estimated Time *</Text>
+                  <TouchableOpacity
+                    style={styles.dropdownButton}
+                    onPress={() => {
+                      setShowHoursDropdown(!showHoursDropdown);
+                      setShowPointsDropdown(false);
+                    }}
+                  >
+                    <Ionicons name="time-outline" size={20} color="#666" />
+                    <View style={styles.dropdownContent}>
+                      <Text style={styles.dropdownText}>
+                        {newTask.estimatedHours}{" "}
+                        {newTask.estimatedHours === 1 ? "Hour" : "Hours"}
+                      </Text>
+                      <Text style={styles.dropdownSubtext}>
+                        Estimated time for this volunteering
+                      </Text>
+                    </View>
+                    <Ionicons
+                      name={showHoursDropdown ? "chevron-up" : "chevron-down"}
+                      size={20}
+                      color="#999"
+                    />
+                  </TouchableOpacity>
+
+                  {showHoursDropdown && (
+                    <View style={styles.dropdownMenu}>
+                      {hoursOptions.map((hours) => (
+                        <TouchableOpacity
+                          key={hours}
+                          style={[
+                            styles.dropdownOption,
+                            newTask.estimatedHours === hours &&
+                              styles.dropdownOptionSelected,
+                          ]}
+                          onPress={() => {
+                            setNewTask((t) => ({
+                              ...t,
+                              estimatedHours: hours,
+                            }));
+                            setShowHoursDropdown(false);
+                          }}
+                        >
+                          <View style={styles.optionContent}>
+                            <Ionicons
+                              name="time"
+                              size={16}
+                              color={
+                                newTask.estimatedHours === hours
+                                  ? "#FF9800"
+                                  : "#999"
+                              }
+                            />
+                            <Text
+                              style={[
+                                styles.optionText,
+                                newTask.estimatedHours === hours &&
+                                  styles.optionTextSelected,
+                              ]}
+                            >
+                              {hours} {hours === 1 ? "Hour" : "Hours"}
+                            </Text>
+                          </View>
+                          {newTask.estimatedHours === hours && (
+                            <Ionicons
+                              name="checkmark"
+                              size={18}
+                              color="#FF9800"
+                            />
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              </View>
+
               {/* Date & Time Section */}
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <Ionicons name="time-outline" size={20} color="#FF9800" />
+                  <Ionicons name="calendar-outline" size={20} color="#FF9800" />
                   <Text style={styles.sectionTitle}>Schedule</Text>
                 </View>
 
@@ -718,6 +890,68 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     color: "#fff",
+  },
+  dropdownButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8f9fa",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  dropdownContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  dropdownText: {
+    fontSize: 16,
+    color: "#222",
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  dropdownSubtext: {
+    fontSize: 12,
+    color: "#666",
+  },
+  dropdownMenu: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    marginTop: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  dropdownOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  dropdownOptionSelected: {
+    backgroundColor: "#fff5f0",
+  },
+  optionContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  optionText: {
+    fontSize: 14,
+    color: "#333",
+    fontWeight: "500",
+    marginLeft: 8,
+  },
+  optionTextSelected: {
+    color: "#FF9800",
+    fontWeight: "600",
   },
 });
 

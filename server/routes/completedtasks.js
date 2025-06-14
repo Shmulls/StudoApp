@@ -15,6 +15,8 @@ router.post("/completed-tasks", async (req, res) => {
       time,
       signedUp,
       feedback,
+      userName, // Add this parameter
+      userImage, // Add this parameter
     } = req.body;
 
     console.log("CompletedTask POST body:", req.body);
@@ -38,7 +40,7 @@ router.post("/completed-tasks", async (req, res) => {
     const originalTask = await Task.findById(taskId);
 
     if (originalTask && originalTask.createdBy !== userId) {
-      // Create notification for organization owner
+      // Create notification for organization owner with actual user info
       const notification = new Notification({
         title: `Task "${title}" Completed`,
         message: `A user has completed the task "${title}"${
@@ -49,8 +51,8 @@ router.post("/completed-tasks", async (req, res) => {
         taskId: taskId,
         completedBy: {
           id: userId,
-          name: `User ${userId}`, // You might want to get actual user name
-          image: null,
+          name: userName || "Unknown User", // Use the actual user name
+          image: userImage || null, // Use the actual user image
         },
         read: false,
       });

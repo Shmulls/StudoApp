@@ -79,6 +79,7 @@ const TaskCard = ({
       console.log("Task ID:", task._id);
       console.log("User ID:", user?.id);
       console.log("Feedback:", feedback);
+      console.log("Points to award:", task.pointsReward || 1);
 
       const apiUrl = `http://128.140.74.218:5001/api/tasks/${task._id}/complete`;
       console.log("📡 API URL:", apiUrl);
@@ -86,6 +87,9 @@ const TaskCard = ({
       const requestBody = {
         userId: user?.id,
         feedback: feedback || null,
+        pointsReward: task.pointsReward || 1,
+        userName: user?.fullName || user?.firstName || "Unknown User", // Add this line
+        userImage: user?.imageUrl || null, // Add this line
       };
       console.log("📦 Request body:", requestBody);
 
@@ -152,11 +156,13 @@ const TaskCard = ({
         // Don't let parent errors affect our success flow
       }
 
-      // Show success message
+      // Show success message with correct points
       console.log("🎉 Showing success message...");
       Alert.alert(
         "Success! 🎉",
-        "Task completed successfully! You earned +1 point!"
+        `Task completed successfully! You earned +${task.pointsReward || 1} ${
+          (task.pointsReward || 1) === 1 ? "point" : "points"
+        }!`
       );
     } catch (error) {
       console.error("💥 Error in task completion flow:", error);
@@ -325,11 +331,32 @@ const TaskCard = ({
               </Text>
             </View>
           </View>
+
+          {/* Reward Badge */}
+          <View style={styles.rewardBadge}>
+            <Ionicons name="star" size={12} color="#FFD700" />
+            <Text style={styles.rewardText}>+{task.pointsReward || 1}</Text>
+          </View>
         </View>
 
         <Text style={styles.modernTaskDescription} numberOfLines={2}>
           {task.description}
         </Text>
+
+        {/* Task Stats Row */}
+        <View style={styles.taskStatsRow}>
+          <View style={styles.statItem}>
+            <Ionicons name="time" size={14} color="#666" />
+            <Text style={styles.statText}>{task.estimatedHours || 1}h</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Ionicons name="trophy" size={14} color="#FFD700" />
+            <Text style={styles.statText}>
+              {task.pointsReward || 1}{" "}
+              {(task.pointsReward || 1) === 1 ? "pt" : "pts"}
+            </Text>
+          </View>
+        </View>
 
         <View style={styles.taskCardFooter}>
           <View style={styles.locationContainer}>
@@ -350,6 +377,7 @@ const TaskCard = ({
         setFeedback={setFeedback}
         onSubmit={handleCompleteTask}
         loading={submitting}
+        pointsReward={task.pointsReward || 1} // Pass points to modal
       />
     </>
   );
@@ -482,5 +510,41 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontWeight: "bold",
+  },
+  rewardBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF9E6",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FFE082",
+  },
+  rewardText: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#F57F17",
+    marginLeft: 4,
+  },
+  taskStatsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 8,
+    gap: 16,
+  },
+  statItem: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  statText: {
+    fontSize: 12,
+    color: "#666",
+    fontWeight: "600",
+    marginLeft: 6,
   },
 });

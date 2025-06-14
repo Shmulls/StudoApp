@@ -20,9 +20,7 @@ import AddTaskModal from "../../../components/AddTaskModal";
 import OrgStatistics from "../../../components/OrgStatistics";
 import { Task } from "../../../types/task";
 
-// const LOCATION_API_KEY = "AIzaSyAjyYxXChjy1vRsJqanVMJxjieY1cOCHLA";
-
-// Define the type for newTask
+// Update the NewTask type to match AddTaskModal expectations
 type NewTask = {
   title: string;
   description: string;
@@ -30,10 +28,12 @@ type NewTask = {
   locationLabel: string;
   time: string;
   signedUp: boolean;
+  pointsReward: number; // Add this field
+  estimatedHours: number; // Add this field
 };
 
 const Organization = () => {
-  const { user, isLoaded } = useUser(); // get isLoaded
+  const { user, isLoaded } = useUser();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [addTaskVisible, setAddTaskVisible] = useState(false);
   const [newTask, setNewTask] = useState<NewTask>({
@@ -43,6 +43,8 @@ const Organization = () => {
     locationLabel: "",
     time: "",
     signedUp: false,
+    pointsReward: 1, // Add default value
+    estimatedHours: 1, // Add default value
   });
   const [creating, setCreating] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -143,9 +145,16 @@ const Organization = () => {
     }
     setCreating(true);
     try {
-      const { data } = await createTask(newTask);
+      // Include the new fields in the task creation
+      const taskData = {
+        ...newTask,
+        createdBy: user?.id || "unknown", // Add createdBy field
+      };
+
+      const { data } = await createTask(taskData);
       setTasks((prev) => [data, ...prev]);
       setAddTaskVisible(false);
+      // Reset form with new fields
       setNewTask({
         title: "",
         description: "",
@@ -153,8 +162,11 @@ const Organization = () => {
         locationLabel: "",
         time: "",
         signedUp: false,
+        pointsReward: 1, // Reset to default
+        estimatedHours: 1, // Reset to default
       });
     } catch (e) {
+      console.error("Failed to create task:", e);
       alert("Failed to create task.");
     }
     setCreating(false);
@@ -586,7 +598,7 @@ const Organization = () => {
         </View>
       </Modal>
 
-      {/* Add Task Modal remains the same */}
+      {/* Updated Add Task Modal with correct props */}
       <AddTaskModal
         visible={addTaskVisible}
         creating={creating}

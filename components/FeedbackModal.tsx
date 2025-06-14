@@ -17,6 +17,7 @@ export default function FeedbackModal({
   setFeedback,
   onSubmit,
   loading,
+  pointsReward = 1, // New prop for dynamic points
 }: {
   visible: boolean;
   onClose: () => void;
@@ -24,6 +25,7 @@ export default function FeedbackModal({
   setFeedback: (text: string) => void;
   onSubmit: () => void;
   loading?: boolean;
+  pointsReward?: number; // New prop
 }) {
   return (
     <Modal
@@ -48,7 +50,9 @@ export default function FeedbackModal({
           <View style={styles.titleContainer}>
             <Text style={styles.title}>Fantastic Work! 🎉</Text>
             <Text style={styles.subtitle}>
-              You've earned +1 point! Share your experience with us.
+              You've earned +{pointsReward}{" "}
+              {pointsReward === 1 ? "point" : "points"}! Share your experience
+              with us.
             </Text>
           </View>
 
@@ -56,7 +60,9 @@ export default function FeedbackModal({
           <View style={styles.pointsContainer}>
             <View style={styles.pointsBadge}>
               <Ionicons name="star" size={16} color="#FFD700" />
-              <Text style={styles.pointsText}>+1 Point Earned</Text>
+              <Text style={styles.pointsText}>
+                +{pointsReward} {pointsReward === 1 ? "Point" : "Points"} Earned
+              </Text>
             </View>
           </View>
 

@@ -161,6 +161,30 @@ const NotificationsScreen = () => {
     }
   };
 
+  const parseMessage = (message: string) => {
+    console.log("Original message:", message);
+
+    // Split by pipe separator
+    const parts = message.split(" | ");
+    let feedback = null;
+    let points = null;
+
+    parts.forEach((part) => {
+      const trimmedPart = part.trim();
+      if (trimmedPart.startsWith("Feedback:")) {
+        feedback = trimmedPart.replace("Feedback:", "").trim();
+      }
+      if (trimmedPart.startsWith("Points earned:")) {
+        points = trimmedPart.replace("Points earned:", "").trim();
+      }
+    });
+
+    console.log("Parsed feedback:", feedback);
+    console.log("Parsed points:", points);
+
+    return { feedback, points };
+  };
+
   const renderNotification = ({ item }: { item: Notification }) => {
     const iconData = getNotificationIcon(item.type);
 
@@ -191,7 +215,7 @@ const NotificationsScreen = () => {
             </Text>
           </View>
 
-          <Text style={styles.notificationMessage} numberOfLines={2}>
+          <Text style={styles.notificationMessage} numberOfLines={3}>
             {item.message}
           </Text>
 
@@ -212,12 +236,6 @@ const NotificationsScreen = () => {
                   Completed by {item.completedBy.name}
                 </Text>
               </View>
-              {item.taskId && (
-                <TouchableOpacity style={styles.viewTaskButton}>
-                  <Text style={styles.viewTaskButtonText}>View Task</Text>
-                  <Ionicons name="chevron-forward" size={16} color="#FF9800" />
-                </TouchableOpacity>
-              )}
             </View>
           )}
         </View>
@@ -415,11 +433,11 @@ const styles = StyleSheet.create({
   },
   completedBySection: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: "#f8f9fa",
     borderRadius: 8,
     padding: 8,
+    marginTop: 8,
   },
   completedByInfo: {
     flexDirection: "row",
@@ -445,20 +463,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#666",
     fontWeight: "500",
-  },
-  viewTaskButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff5f0",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  viewTaskButtonText: {
-    fontSize: 10,
-    color: "#FF9800",
-    fontWeight: "600",
-    marginRight: 4,
   },
   unreadIndicator: {
     width: 8,

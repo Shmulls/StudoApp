@@ -4,7 +4,6 @@ const CompletedTask = require("../models/CompletedTask");
 const Notification = require("../models/Notification");
 const router = express.Router();
 const mongoose = require("mongoose");
-const io = require("../server");
 
 // Get all tasks
 router.get("/", async (req, res) => {
@@ -21,11 +20,13 @@ router.post("/", async (req, res) => {
   try {
     console.log("Task creation request body:", req.body); // Debug log
 
-    // Ensure the time is a valid Date
+    // Ensure the time is a valid Date and include new fields
     const taskData = {
       ...req.body,
       time: new Date(req.body.time), // Convert to Date object
       createdBy: req.body.createdBy || req.body.userId || "unknown", // Better fallback handling
+      pointsReward: req.body.pointsReward || 1, // Default to 1 if not provided
+      estimatedHours: req.body.estimatedHours || 1, // Default to 1 if not provided
     };
 
     console.log("Task data before saving:", taskData); // Debug log
@@ -35,27 +36,37 @@ router.post("/", async (req, res) => {
 
     console.log("Task created successfully:", newTask);
 
-    // Create notification for all users (you can customize this logic)
+    // Create notification with points information
     const notification = new Notification({
       userId: "all", // or specific user IDs
       title: "New Task Available!",
-      message: `${task.title} - ${task.description.substring(0, 100)}...`,
+      message: `${task.title} - ${task.description.substring(0, 100)}${
+        task.description.length > 100 ? "..." : ""
+      } (${task.pointsReward} ${
+        task.pointsReward === 1 ? "point" : "points"
+      }, ${task.estimatedHours}h)`,
       type: "new_task",
       taskId: task._id,
+      status: "unread",
       createdAt: new Date(),
     });
 
     await notification.save();
 
     // Emit real-time notification via Socket.IO
-    req.app.get("io").emit("new-notification", notification);
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("new-notification", notification);
+      console.log("Notification emitted via Socket.IO");
+    }
 
     res.status(201).json(newTask);
   } catch (error) {
     console.error("Error creating task:", error);
-    res
-      .status(400)
-      .json({ message: "Error creating task", error: error.message });
+    res.status(400).json({
+      message: "Error creating task",
+      error: error.message,
+    });
   }
 });
 
@@ -87,74 +98,60 @@ router.patch("/:id/complete", async (req, res) => {
   console.log("Task ID:", req.params.id);
   console.log("Request body:", req.body);
 
-  const { userId, feedback } = req.body;
+  const { userId, feedback, pointsReward, userName, userImage } = req.body;
   const { id } = req.params;
 
   try {
-    // Ensure that the taskId is a valid ObjectId before querying
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      console.log("❌ Invalid task ID:", id);
-      return res.status(400).json({ message: "Invalid task ID" });
-    }
-
+    // Find the task first
     const task = await Task.findById(id);
-    console.log("📋 Found task:", task);
-
     if (!task) {
-      console.log("❌ Task not found with ID:", id);
       return res.status(404).json({ message: "Task not found" });
     }
 
-    // 🎯 MARK THE ORIGINAL TASK AS COMPLETED 🎯
+    console.log("📋 Found task:", task);
+
+    // Mark the original task as completed
     task.completed = true;
-    task.completedAt = new Date();
-    task.completedBy = userId;
     await task.save();
     console.log("✅ Original task marked as completed");
 
-    // Create the completed task entry (for detailed tracking)
+    // Create a completed task entry
     console.log("💾 Creating completed task entry...");
     const completedTask = new CompletedTask({
-      userId,
+      userId: userId,
       taskId: task._id,
       title: task.title,
       description: task.description,
       location: task.location,
       time: task.time,
       signedUp: task.signedUp,
-      feedback: feedback || null,
+      feedback: feedback || "",
       completedAt: new Date(),
     });
 
-    await completedTask.save();
-    console.log("✅ Completed task saved:", completedTask._id);
+    const savedCompletedTask = await completedTask.save();
+    console.log("✅ Completed task saved:", savedCompletedTask._id);
 
-    // 🎯 CREATE NOTIFICATION FOR TASK COMPLETION 🎯
-    console.log("🔍 Checking notification conditions:");
-    console.log("- task.createdBy:", task.createdBy);
-    console.log("- userId:", userId);
-    console.log("- createdBy !== userId:", task.createdBy !== userId);
-    console.log("- createdBy !== 'unknown':", task.createdBy !== "unknown");
+    // Create notification for organization owner (if task was created by someone else)
+    if (task.createdBy && task.createdBy !== userId) {
+      console.log("🔔 Creating completion notification...");
 
-    if (
-      task.createdBy &&
-      task.createdBy !== userId &&
-      task.createdBy !== "unknown"
-    ) {
-      console.log("🔔 Creating notification...");
+      // Create a simpler message format that includes feedback and points
+      let message = `Feedback: ${
+        feedback || "No feedback provided"
+      } | Points earned: ${pointsReward || task.pointsReward || 1}`;
 
       const notification = new Notification({
-        title: `Task "${task.title}" Completed`,
-        message: `A user has completed the task "${task.title}"${
-          feedback ? ` with feedback: ${feedback}` : "."
-        }`,
+        userId: task.createdBy, // Organization owner who created the task
+        title: `Task Completed: ${task.title}`,
+        message: message,
         type: "task_completed",
-        userId: task.createdBy,
         taskId: task._id,
+        status: "unread",
         completedBy: {
           id: userId,
-          name: `User ${userId}`,
-          image: null,
+          name: userName || "Unknown User",
+          image: userImage || null,
         },
         read: false,
       });
@@ -170,26 +167,17 @@ router.patch("/:id/complete", async (req, res) => {
           `📡 Emitted completion notification to org_${task.createdBy}`
         );
       }
-    } else {
-      console.log("❌ No notification created - conditions not met");
-      console.log("   createdBy:", task.createdBy);
-      console.log("   userId:", userId);
     }
 
-    res.status(200).json({
-      message: "Task marked as completed",
-      completedTask,
-      originalTask: task, // Include the updated original task
-      notificationSent:
-        task.createdBy &&
-        task.createdBy !== userId &&
-        task.createdBy !== "unknown",
+    res.json({
+      success: true,
+      message: "Task completed successfully",
+      task: task,
+      completedTask: savedCompletedTask,
     });
   } catch (error) {
-    console.error("💥 Error completing task:", error);
-    res
-      .status(500)
-      .json({ message: "Error completing task", error: error.message });
+    console.error("Error completing task:", error);
+    res.status(500).json({ message: error.message });
   }
 });
 
