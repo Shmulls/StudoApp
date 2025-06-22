@@ -1,13 +1,16 @@
 import { useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Animated,
   Dimensions,
   FlatList,
   Image,
+  Linking, // ✅ Add this import
   Modal,
   StyleSheet,
   Text,
@@ -15,10 +18,12 @@ import {
   View,
 } from "react-native";
 import "react-native-get-random-values";
-import { createTask, deleteTask, fetchTasks, updateTask } from "../../../api";
+import { deleteTask, fetchOrganizationTasks, updateTask } from "../../../api";
 import AddTaskModal from "../../../components/AddTaskModal";
 import OrgStatistics from "../../../components/OrgStatistics";
 import { Task } from "../../../types/task";
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
 
 // Update the NewTask type to match AddTaskModal expectations
 type NewTask = {
@@ -87,17 +92,25 @@ const Organization = () => {
 
   // Fetch tasks from the backend
   useEffect(() => {
-    const getTasks = async () => {
+    const fetchTasks = async () => {
+      if (!user?.id) return; // ✅ This already checks for null/undefined
+
+      setRefreshing(true);
       try {
-        const { data } = await fetchTasks(); // Fetch tasks from the backend
+        console.log("🔄 Fetching tasks for organization:", user.id);
+
+        const data = await fetchOrganizationTasks(user.id);
+        console.log("📋 Fetched tasks for this organization:", data.length);
         setTasks(data);
       } catch (error) {
-        console.error("Error fetching tasks:", error);
+        console.error("❌ Error fetching tasks:", error);
+      } finally {
+        setRefreshing(false);
       }
     };
 
-    getTasks();
-  }, []);
+    fetchTasks();
+  }, [user?.id]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -134,6 +147,11 @@ const Organization = () => {
   };
 
   const handleCreateTask = async () => {
+    if (!user?.id) {
+      Alert.alert("Error", "User not authenticated");
+      return;
+    }
+
     if (
       !newTask.title ||
       !newTask.description ||
@@ -143,33 +161,61 @@ const Organization = () => {
       alert("Please fill all fields and select a location.");
       return;
     }
+
     setCreating(true);
     try {
-      // Include the new fields in the task creation
+      console.log("🎯 Creating task with data:", newTask);
+
       const taskData = {
         ...newTask,
-        createdBy: user?.id || "unknown", // Add createdBy field
+        createdBy: user.id, // ✅ Make sure this is the organization's user ID
       };
 
-      const { data } = await createTask(taskData);
-      setTasks((prev) => [data, ...prev]);
-      setAddTaskVisible(false);
-      // Reset form with new fields
-      setNewTask({
-        title: "",
-        description: "",
-        location: null,
-        locationLabel: "",
-        time: "",
-        signedUp: false,
-        pointsReward: 1, // Reset to default
-        estimatedHours: 1, // Reset to default
+      console.log("📡 Sending task data:", taskData);
+      console.log("🏢 Organization ID (createdBy):", user.id); // ✅ Add this log
+
+      const response = await fetch(`${API_URL}/tasks`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(taskData),
       });
-    } catch (e) {
-      console.error("Failed to create task:", e);
-      alert("Failed to create task.");
+
+      console.log("📡 Response status:", response.status);
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log("✅ Task created:", result);
+
+        setNewTask({
+          title: "",
+          description: "",
+          location: null,
+          locationLabel: "",
+          time: "",
+          signedUp: false,
+          pointsReward: 1,
+          estimatedHours: 1,
+        });
+        setAddTaskVisible(false);
+
+        // ✅ Refresh with null check
+        const refreshedData = await fetchOrganizationTasks(user.id);
+        setTasks(refreshedData);
+
+        Alert.alert("Success", "Task created successfully!");
+      } else {
+        const errorData = await response.json();
+        console.error("❌ Task creation failed:", errorData);
+        Alert.alert("Error", errorData.message || "Failed to create task");
+      }
+    } catch (error) {
+      console.error("❌ Network error:", error);
+      Alert.alert("Error", "Network error. Please check your connection.");
+    } finally {
+      setCreating(false);
     }
-    setCreating(false);
   };
 
   const openCount = tasks.filter((t) => !t.completed).length;
@@ -223,11 +269,12 @@ const Organization = () => {
       alert("Failed to delete task.");
     }
   };
-
   const onRefresh = async () => {
+    if (!user?.id) return; // ✅ Add this null check
+
     setRefreshing(true);
     try {
-      const { data } = await fetchTasks();
+      const data = await fetchOrganizationTasks(user.id);
       setTasks(data);
     } catch (error) {
       console.error("Error refreshing tasks:", error);
@@ -235,6 +282,46 @@ const Organization = () => {
     setRefreshing(false);
   };
 
+  // Add avatar state
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  // Load avatar from AsyncStorage
+  useEffect(() => {
+    const loadOrganizationAvatar = async (userParam: any) => {
+      try {
+        // First try AsyncStorage
+        const storedAvatarUrl = await AsyncStorage.getItem(
+          "organizationAvatarUrl"
+        );
+        if (storedAvatarUrl) {
+          setAvatarUrl(storedAvatarUrl);
+          console.log(
+            "🏢 Organization: Loaded avatar from storage:",
+            storedAvatarUrl
+          );
+          return;
+        }
+
+        // Then try user metadata
+        const metadataAvatar = userParam?.unsafeMetadata?.avatarUrl as string;
+        if (metadataAvatar) {
+          setAvatarUrl(metadataAvatar);
+          console.log(
+            "🏢 Organization: Loaded avatar from metadata:",
+            metadataAvatar
+          );
+        }
+      } catch (error) {
+        console.log("Could not load organization avatar:", error);
+      }
+    };
+
+    if (user) {
+      loadOrganizationAvatar(user);
+    }
+  }, [user]);
+
+  // Update the profile image in your header
   if (!isLoaded) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -242,6 +329,26 @@ const Organization = () => {
       </View>
     );
   }
+
+  // Add this helper function at the top of your component, after the imports
+  const getCreationTimeFromObjectId = (objectId: string): number => {
+    try {
+      // First 4 bytes of ObjectId represent creation timestamp
+      return parseInt(objectId.substring(0, 8), 16) * 1000;
+    } catch {
+      return 0;
+    }
+  };
+
+  // Add this temporarily to debug
+  useEffect(() => {
+    console.log("🔍 DEBUG - Current user ID:", user?.id);
+    console.log("🔍 DEBUG - User role:", user?.unsafeMetadata?.role);
+    console.log(
+      "🔍 DEBUG - Organization name:",
+      user?.unsafeMetadata?.organizationName
+    );
+  }, [user]);
 
   return (
     <View style={styles.container}>
@@ -253,18 +360,65 @@ const Organization = () => {
           >
             <View style={styles.profileImageContainer}>
               <Image
-                source={{ uri: user?.imageUrl }}
+                source={{
+                  uri: avatarUrl || user?.imageUrl || undefined,
+                }}
                 style={styles.profileImage}
+                onError={() => {
+                  console.log("Failed to load organization avatar");
+                  setAvatarUrl(null);
+                }}
               />
               <View style={styles.onlineIndicator} />
             </View>
           </TouchableOpacity>
           <View style={styles.headerText}>
             <Text style={styles.welcomeText}>Welcome Back 👋</Text>
-            <Text style={styles.userName}>{user?.firstName}!</Text>
+            <Text style={styles.userName}>
+              {String(user?.unsafeMetadata?.organizationName || "Organization")}
+            </Text>
           </View>
         </View>
         <View style={styles.headerIcons}>
+          {/* Yellow ribbon icon - first */}
+          <TouchableOpacity
+            style={styles.ribbonButton}
+            onPress={async () => {
+              try {
+                const url = "https://stories.bringthemhomenow.net/";
+                console.log("🎗️ Organization: Opening ribbon website:", url);
+
+                // Check if the device can open URLs
+                const supported = await Linking.canOpenURL(url);
+
+                if (supported) {
+                  await Linking.openURL(url);
+                  console.log(
+                    "✅ Organization: Successfully opened ribbon website"
+                  );
+                } else {
+                  console.error("❌ Organization: Cannot open URL:", url);
+                  Alert.alert(
+                    "Unable to Open",
+                    "We couldn't open the link. Please check your internet connection and try again."
+                  );
+                }
+              } catch (error) {
+                console.error(
+                  "❌ Organization: Error opening ribbon website:",
+                  error
+                );
+                Alert.alert(
+                  "Error",
+                  "Something went wrong while trying to open the link. Please try again."
+                );
+              }
+            }}
+          >
+            <Text style={styles.ribbonIcon}>🎗️</Text>
+          </TouchableOpacity>
+
+          {/* Notifications - second */}
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => router.push("/organization-notification")}
@@ -272,12 +426,16 @@ const Organization = () => {
             <Ionicons name="notifications-outline" size={22} color="#333" />
             <View style={styles.notificationBadge} />
           </TouchableOpacity>
+
+          {/* Settings - third */}
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => router.push("/settings")}
           >
             <Ionicons name="settings-outline" size={22} color="#333" />
           </TouchableOpacity>
+
+          {/* Add task - fourth */}
           <TouchableOpacity
             style={styles.addButton}
             onPress={() => setAddTaskVisible(true)}
@@ -376,7 +534,14 @@ const Organization = () => {
             </Text>
           </View>
           <FlatList
-            data={tasks.filter((t) => !t.completed)}
+            data={tasks
+              .filter((t) => !t.completed)
+              .sort((a, b) => {
+                // Sort by creation time from ObjectId (newest first)
+                const timeA = getCreationTimeFromObjectId(a._id);
+                const timeB = getCreationTimeFromObjectId(b._id);
+                return timeB - timeA; // Newest first
+              })}
             keyExtractor={(item) => item._id}
             renderItem={({ item }) => (
               <TouchableOpacity
@@ -492,7 +657,14 @@ const Organization = () => {
             </Text>
           </View>
           <FlatList
-            data={tasks.filter((t) => t.completed)}
+            data={tasks
+              .filter((t) => t.completed)
+              .sort((a, b) => {
+                // Sort by creation time from ObjectId (newest first)
+                const timeA = getCreationTimeFromObjectId(a._id);
+                const timeB = getCreationTimeFromObjectId(b._id);
+                return timeB - timeA; // Newest first
+              })}
             keyExtractor={(item) => item._id}
             renderItem={({ item }) => (
               <View style={styles.completedTaskCard}>
@@ -598,7 +770,7 @@ const Organization = () => {
         </View>
       </Modal>
 
-      {/* Updated Add Task Modal with correct props */}
+      {/* Updated Add Task Modal with user prop */}
       <AddTaskModal
         visible={addTaskVisible}
         creating={creating}
@@ -606,6 +778,7 @@ const Organization = () => {
         setNewTask={setNewTask}
         onClose={() => setAddTaskVisible(false)}
         onCreate={handleCreateTask}
+        user={user} // ✅ Add this line - pass the user prop
       />
     </View>
   );
@@ -1029,6 +1202,19 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
     textAlign: "center",
+  },
+  ribbonButton: {
+    width: 40, // ✅ Same as iconButton width
+    height: 40, // ✅ Same as iconButton height
+    borderRadius: 20, // ✅ Same as iconButton borderRadius
+    backgroundColor: "#f8f9fa", // ✅ Same as iconButton backgroundColor
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 8, // ✅ Same as iconButton marginLeft
+    position: "relative", // ✅ Same as iconButton position
+  },
+  ribbonIcon: {
+    fontSize: 18, // ✅ Keep the emoji size consistent
   },
 });
 

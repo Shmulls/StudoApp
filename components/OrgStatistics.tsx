@@ -1,7 +1,7 @@
+import * as Clipboard from "expo-clipboard";
 import React from "react";
 import {
   Alert,
-  Clipboard,
   Dimensions,
   ScrollView,
   StyleSheet,
@@ -46,17 +46,20 @@ const TABS = [
   { key: "year", label: "Year" },
 ];
 
-const OrgStatistics: React.FC<OrgStatisticsProps> = ({
-  open,
-  closed,
-  percent,
-  chartData,
-  chartLabels,
-  tab,
-  onTab,
-  averageCompletionTime,
-  overdueTasks,
-}) => {
+const OrgStatistics: React.FC<OrgStatisticsProps> = (
+  props: OrgStatisticsProps
+) => {
+  const {
+    open,
+    closed,
+    percent,
+    chartData,
+    chartLabels,
+    tab,
+    onTab,
+    averageCompletionTime,
+    overdueTasks,
+  } = props;
   // Ensure chart data has at least one value
   const safeChartData = chartData.length > 0 ? chartData : [1, 2, 3, 4, 5];
   const safeChartLabels = chartLabels.length > 0 ? chartLabels : ["No Data"];
@@ -115,7 +118,8 @@ const OrgStatistics: React.FC<OrgStatisticsProps> = ({
         insights: {
           peakActivity: Math.max(...safeChartData),
           averagePerPeriod: (
-            safeChartData.reduce((a, b) => a + b, 0) / safeChartData.length
+            safeChartData.reduce((a: number, b: number) => a + b, 0) /
+            safeChartData.length
           ).toFixed(1),
           mostActive:
             tab === "day"
@@ -181,7 +185,7 @@ const OrgStatistics: React.FC<OrgStatisticsProps> = ({
 
   const copyToClipboard = async (content: string, format: string) => {
     try {
-      await Clipboard.setString(content);
+      await Clipboard.setStringAsync(content);
       Alert.alert(
         "Copied!",
         `${format} data has been copied to clipboard. You can paste it into any spreadsheet app, email, or document.`,
@@ -372,7 +376,8 @@ const OrgStatistics: React.FC<OrgStatisticsProps> = ({
             <Text style={styles.insightLabel}>Avg per Period</Text>
             <Text style={styles.insightValue}>
               {(
-                safeChartData.reduce((a, b) => a + b, 0) / safeChartData.length
+                safeChartData.reduce((a: number, b: number) => a + b, 0) /
+                safeChartData.length
               ).toFixed(1)}
             </Text>
           </View>

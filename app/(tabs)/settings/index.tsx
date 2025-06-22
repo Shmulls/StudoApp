@@ -15,9 +15,11 @@ import {
   View,
 } from "react-native";
 import QRCode from "react-native-qrcode-svg";
+import { NotificationService } from "../../../services/notificationService";
 import { goHome } from "../../../utils/navigation";
 
-const APP_DOWNLOAD_LINK = "https://your-app-download-link.com";
+const APP_DOWNLOAD_LINK =
+  "https://expo.dev/artifacts/eas/v4r4yB6dXTwSqpncD7PfKb.apk";
 
 const TERMS_TEXT = `
 Welcome to StudoApp!
@@ -53,6 +55,11 @@ const SettingsScreen = () => {
     checkLocationSettings();
   }, []);
 
+  // Check notification permissions on load
+  useEffect(() => {
+    checkNotificationSettings();
+  }, []);
+
   const checkLocationSettings = async () => {
     try {
       // Check if location is enabled in app settings
@@ -67,6 +74,11 @@ const SettingsScreen = () => {
     } catch (error) {
       console.error("Error checking location settings:", error);
     }
+  };
+
+  const checkNotificationSettings = async () => {
+    const hasPermission = await NotificationService.requestPermissions();
+    setNotificationsEnabled(hasPermission);
   };
 
   const handleLocationToggle = async (value: boolean) => {
@@ -117,6 +129,22 @@ const SettingsScreen = () => {
     }
   };
 
+  const toggleNotifications = async (value: boolean) => {
+    if (value) {
+      const granted = await NotificationService.requestPermissions();
+      setNotificationsEnabled(granted);
+      if (granted) {
+        Alert.alert(
+          "Notifications Enabled",
+          "You'll receive reminders for your assigned tasks!"
+        );
+      }
+    } else {
+      setNotificationsEnabled(false);
+      // You might want to cancel all scheduled notifications here
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Modern Header */}
@@ -135,7 +163,37 @@ const SettingsScreen = () => {
         {/* User Info Card */}
         <View style={styles.userCard}>
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>Hi, {user?.firstName}! 👋</Text>
+            <Text style={styles.userName}>
+              Hi,{" "}
+              {(() => {
+                // Check if it's an organization
+                if (user?.unsafeMetadata?.role === "organization") {
+                  return String(
+                    user?.unsafeMetadata?.organizationName || "Organization"
+                  );
+                }
+
+                // For students, try different sources
+                const fullName = user?.unsafeMetadata?.fullName as string;
+                if (fullName && fullName.trim()) {
+                  return fullName.split(" ")[0]; // Get first name only for greeting
+                }
+
+                // Try firstName from metadata
+                const firstName =
+                  (user?.unsafeMetadata?.firstName as string) ||
+                  user?.firstName;
+                if (firstName && firstName.trim()) {
+                  return firstName;
+                }
+
+                // Fallback to email username
+                return (
+                  user?.emailAddresses[0]?.emailAddress?.split("@")[0] || "User"
+                );
+              })()}{" "}
+              👋
+            </Text>
             <Text style={styles.userEmail}>
               {user?.emailAddresses[0]?.emailAddress}
             </Text>
@@ -156,9 +214,9 @@ const SettingsScreen = () => {
             </View>
             <Switch
               value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
-              trackColor={{ false: "#e0e0e0", true: "#FF9800" }}
-              thumbColor={notificationsEnabled ? "#fff" : "#fff"}
+              onValueChange={toggleNotifications}
+              trackColor={{ false: "#e0e0e0", true: "#4CAF50" }}
+              thumbColor={notificationsEnabled ? "#fff" : "#f4f3f4"}
               ios_backgroundColor="#e0e0e0"
             />
           </View>

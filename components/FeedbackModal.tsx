@@ -1,14 +1,17 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import {
-  Animated,
+  Dimensions,
   Modal,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+
+const { height: screenHeight } = Dimensions.get("window");
 
 export default function FeedbackModal({
   visible,
@@ -17,7 +20,7 @@ export default function FeedbackModal({
   setFeedback,
   onSubmit,
   loading,
-  pointsReward = 1, // New prop for dynamic points
+  pointsReward = 1,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -25,7 +28,7 @@ export default function FeedbackModal({
   setFeedback: (text: string) => void;
   onSubmit: () => void;
   loading?: boolean;
-  pointsReward?: number; // New prop
+  pointsReward?: number;
 }) {
   return (
     <Modal
@@ -34,99 +37,130 @@ export default function FeedbackModal({
       visible={visible}
       onRequestClose={onClose}
     >
+      {/* ✅ Fix 1: Remove KeyboardAvoidingView wrapper */}
       <View style={styles.overlay}>
-        <View style={styles.content}>
-          {/* Header with close button */}
-          <View style={styles.header}>
-            <View style={styles.celebrationIcon}>
-              <Ionicons name="trophy" size={32} color="#FFD700" />
+        {/* ✅ Fix 2: Add pointerEvents and touch handling */}
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="always" // ✅ Changed from "handled" to "always"
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+          scrollEnabled={true}
+          nestedScrollEnabled={true} // ✅ Add this for Android
+        >
+          <View style={styles.content}>
+            {/* Header with close button */}
+            <View style={styles.header}>
+              <View style={styles.celebrationIcon}>
+                <Ionicons name="trophy" size={32} color="#FFD700" />
+              </View>
+
+              {/* ✅ Test the close button first */}
+              <TouchableOpacity
+                testID="close-modal-btn"
+                style={[
+                  styles.closeButton,
+                  { borderWidth: 2, borderColor: "blue" },
+                ]}
+                onPress={() => {
+                  console.log("❌ CLOSE BUTTON PRESSED!");
+                  onClose();
+                }}
+                activeOpacity={0.5}
+                hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+              >
+                <Ionicons name="close" size={20} color="#666" />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              testID="close-modal-btn"
-              style={styles.closeButton}
-              onPress={onClose}
-            >
-              <Ionicons name="close" size={20} color="#666" />
-            </TouchableOpacity>
-          </View>
 
-          {/* Title and subtitle */}
-          <View style={styles.titleContainer}>
-            <Text style={styles.title}>Fantastic Work! 🎉</Text>
-            <Text style={styles.subtitle}>
-              You've earned +{pointsReward}{" "}
-              {pointsReward === 1 ? "point" : "points"}! Share your experience
-              with us.
-            </Text>
-          </View>
+            {/* Title and subtitle */}
+            <View style={styles.titleContainer}>
+              <Text style={styles.title}>Fantastic Work! 🎉</Text>
+              <Text style={styles.subtitle}>
+                You've earned +{pointsReward}{" "}
+                {pointsReward === 1 ? "point" : "points"}! Share your experience
+                with us.
+              </Text>
+            </View>
 
-          {/* Points earned indicator */}
-          <View style={styles.pointsContainer}>
-            <View style={styles.pointsBadge}>
-              <Ionicons name="star" size={16} color="#FFD700" />
-              <Text style={styles.pointsText}>
-                +{pointsReward} {pointsReward === 1 ? "Point" : "Points"} Earned
+            {/* Points earned indicator */}
+            <View style={styles.pointsContainer}>
+              <View style={styles.pointsBadge}>
+                <Ionicons name="star" size={16} color="#FFD700" />
+                <Text style={styles.pointsText}>
+                  +{pointsReward} {pointsReward === 1 ? "Point" : "Points"}{" "}
+                  Earned
+                </Text>
+              </View>
+            </View>
+
+            {/* Feedback input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>How did it go?</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Share your experience, challenges, or highlights..."
+                value={feedback}
+                onChangeText={setFeedback}
+                multiline
+                placeholderTextColor="#999"
+                numberOfLines={4}
+                scrollEnabled={false} // ✅ Prevent internal scrolling
+                returnKeyType="default"
+                blurOnSubmit={false}
+                autoCorrect={false} // ✅ Reduce keyboard suggestions
+              />
+            </View>
+
+            {/* Action buttons */}
+            <View style={styles.buttonContainer}>
+              {/* ✅ Skip = Complete without feedback */}
+              <TouchableOpacity
+                style={styles.skipButton}
+                onPress={() => {
+                  console.log(
+                    "🚫 SKIP PRESSED - Completing task without feedback"
+                  );
+                  onSubmit(); // ✅ Call onSubmit (which completes the task)
+                  // The modal will close automatically after task completion
+                }}
+                disabled={loading}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.skipButtonText}>Skip</Text>
+              </TouchableOpacity>
+
+              {/* Submit with feedback */}
+              <TouchableOpacity
+                style={[
+                  styles.submitButton,
+                  loading && styles.submitButtonDisabled,
+                ]}
+                onPress={onSubmit}
+                disabled={loading}
+              >
+                {loading ? (
+                  <View style={styles.loadingContainer}>
+                    <Text style={styles.submitButtonText}>Submitting...</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle" size={18} color="#fff" />
+                    <Text style={styles.submitButtonText}>Complete</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Progress indicator */}
+            <View style={styles.progressHint}>
+              <Ionicons name="trending-up" size={14} color="#4CAF50" />
+              <Text style={styles.progressHintText}>
+                Keep going! Every task brings you closer to 120 points!
               </Text>
             </View>
           </View>
-
-          {/* Feedback input */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>How did it go?</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Share your experience, challenges, or highlights..."
-              value={feedback}
-              onChangeText={setFeedback}
-              multiline
-              placeholderTextColor="#999"
-              numberOfLines={4}
-            />
-          </View>
-
-          {/* Action buttons */}
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={styles.skipButton}
-              onPress={() => {
-                setFeedback("");
-                onSubmit();
-              }}
-              disabled={loading}
-            >
-              <Text style={styles.skipButtonText}>Skip</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.submitButton,
-                loading && styles.submitButtonDisabled,
-              ]}
-              onPress={onSubmit}
-              disabled={loading}
-            >
-              {loading ? (
-                <View style={styles.loadingContainer}>
-                  <Animated.View style={styles.loadingDot} />
-                  <Text style={styles.submitButtonText}>Submitting...</Text>
-                </View>
-              ) : (
-                <>
-                  <Ionicons name="checkmark-circle" size={18} color="#fff" />
-                  <Text style={styles.submitButtonText}>Submit Feedback</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* Progress indicator */}
-          <View style={styles.progressHint}>
-            <Ionicons name="trending-up" size={14} color="#4CAF50" />
-            <Text style={styles.progressHintText}>
-              Keep going! Every task brings you closer to 120 points!
-            </Text>
-          </View>
-        </View>
+        </ScrollView>
       </View>
     </Modal>
   );
@@ -135,17 +169,20 @@ export default function FeedbackModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
     backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center", // ✅ Center the modal
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
     paddingHorizontal: 20,
+    minHeight: screenHeight * 0.8, // ✅ Ensure minimum height
   },
   content: {
-    width: "100%",
-    maxWidth: 400,
     backgroundColor: "#fff",
     borderRadius: 24,
     padding: 24,
+    maxHeight: screenHeight * 0.9, // ✅ Limit max height
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.25,
@@ -221,7 +258,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    minHeight: 100,
+    height: 100, // ✅ Fixed height instead of minHeight
     borderColor: "#e0e0e0",
     borderWidth: 1.5,
     borderRadius: 12,

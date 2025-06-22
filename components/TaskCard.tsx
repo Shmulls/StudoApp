@@ -1,23 +1,15 @@
 /**
- * TaskCard Component
- * ------------------
- * Purpose:
- *   - Renders a single task card for the home feed.
- *   - Displays task title, description, time, and action buttons.
- *   - Handles sign up/cancel and complete actions via props.
- * Usage:
- *   <TaskCard
- *     task={task}
- *     onSignUp={handleSignUp}
- *     onComplete={handleComplete}
- *   />
+ * TaskCard Component - Modern Design
  */
 
 import { useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import React, { useState } from "react";
 import {
+  Alert,
   Animated,
+  Linking,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -29,7 +21,7 @@ import FeedbackModal from "./FeedbackModal";
 interface TaskCardProps {
   task: Task;
   onSignUp?: (taskId: string) => void;
-  onComplete?: (pointsEarned: number) => void; // Add this line
+  onComplete?: (taskId: string, feedback: string, points: number) => void;
   onTaskUpdate?: () => void;
 }
 
@@ -40,85 +32,62 @@ const TaskCard = ({
   onTaskUpdate,
 }: TaskCardProps) => {
   const { user } = useUser();
-  const [isPressed, setIsPressed] = useState(false);
+
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showFullDescription, setShowFullDescription] = useState(false);
   const scaleValue = new Animated.Value(1);
 
   const handlePressIn = () => {
-    setIsPressed(true);
     Animated.spring(scaleValue, {
-      toValue: 0.95,
+      toValue: 0.98,
       useNativeDriver: true,
     }).start();
   };
 
   const handlePressOut = () => {
-    setIsPressed(false);
     Animated.spring(scaleValue, {
       toValue: 1,
       useNativeDriver: true,
     }).start();
   };
 
-  // Show feedback modal when complete button is pressed
   const handleCompletePress = () => {
     setShowFeedbackModal(true);
   };
 
-  // Handle the actual task completion with feedback
   const handleCompleteTask = async () => {
     if (submitting) return;
-
     setSubmitting(true);
 
     try {
-      console.log("🔥 Starting task completion process...");
-      console.log("Task ID:", task._id);
-      console.log("User ID:", user?.id);
-      console.log("Feedback:", feedback);
-      console.log("Points to award:", task.pointsReward || 1);
-
-      const apiUrl = `http://128.140.74.218:5001/api/tasks/${task._id}/complete`;
-      console.log("📡 API URL:", apiUrl);
+      const API_URL =
+        process.env.EXPO_PUBLIC_API_URL ||
+        Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL;
 
       const requestBody = {
         userId: user?.id,
-        feedback: feedback || null,
+        feedback: feedback || "",
         pointsReward: task.pointsReward || 1,
         userName: user?.fullName || user?.firstName || "Unknown User",
         userImage: user?.imageUrl || null,
       };
-      console.log("📦 Request body:", requestBody);
 
-      const response = await fetch(apiUrl, {
+      const response = await fetch(`${API_URL}/tasks/${task._id}/complete`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Accept: "application/json",
         },
         body: JSON.stringify(requestBody),
       });
 
-      console.log("📡 Response status:", response.status);
-      console.log("📡 Response ok:", response.ok);
-
       if (response.ok) {
-        const result = await response.json();
-        console.log("✅ Task completion response:", result);
-
-        // Call onComplete with the actual points earned
-        if (onComplete) {
-          const pointsEarned = task.pointsReward || 1;
-          console.log(`🎯 Calling onComplete with ${pointsEarned} points`);
-          onComplete(pointsEarned); // FIX: Pass pointsEarned instead of task._id
-        }
-
         setShowFeedbackModal(false);
         setFeedback("");
-      } else {
-        console.error("❌ Failed to complete task:", response.status);
+        if (onTaskUpdate) {
+          onTaskUpdate();
+        }
       }
     } catch (error) {
       console.error("❌ Error completing task:", error);
@@ -128,56 +97,20 @@ const TaskCard = ({
   };
 
   const handleCloseFeedbackModal = () => {
+    console.log("🔄 Closing feedback modal");
     setShowFeedbackModal(false);
     setFeedback("");
   };
 
-  const renderActionButtons = () => {
-    if (!task.signedUp) {
-      // Register Button
-      return (
-        <Animated.View style={{ transform: [{ scale: scaleValue }] }}>
-          <TouchableOpacity
-            style={styles.modernRegisterButton}
-            onPress={() => onSignUp && onSignUp(task._id)}
-            onPressIn={handlePressIn}
-            onPressOut={handlePressOut}
-            activeOpacity={0.9}
-          >
-            <View style={styles.buttonContent}>
-              <Ionicons name="person-add" size={16} color="#fff" />
-              <Text style={styles.registerButtonText}>Register</Text>
-            </View>
-          </TouchableOpacity>
-        </Animated.View>
-      );
-    } else {
-      // Complete and Cancel buttons
-      return (
-        <View style={styles.assignedButtonContainer}>
-          <TouchableOpacity
-            style={styles.modernCancelButton}
-            onPress={() => onSignUp && onSignUp(task._id)} // This will toggle signedUp to false
-            activeOpacity={0.8}
-          >
-            <Ionicons name="trash-outline" size={16} color="#ff4757" />
-          </TouchableOpacity>
-          <Animated.View style={{ transform: [{ scale: scaleValue }] }}>
-            <TouchableOpacity
-              style={styles.modernCompleteButton}
-              onPress={handleCompletePress} // Show feedback modal instead of completing directly
-              onPressIn={handlePressIn}
-              onPressOut={handlePressOut}
-              activeOpacity={0.9}
-            >
-              <View style={styles.buttonContent}>
-                <Ionicons name="checkmark-circle" size={16} color="#fff" />
-                <Text style={styles.completeButtonText}>Complete</Text>
-              </View>
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
-      );
+  const handleSignUp = async () => {
+    if (onSignUp) {
+      await onSignUp(task._id);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (onSignUp) {
+      onSignUp(task._id);
     }
   };
 
@@ -196,18 +129,15 @@ const TaskCard = ({
       minute: "2-digit",
     });
 
-    // If it's today, just show time
     if (taskDate.getTime() === today.getTime()) {
-      return `Today • ${timeStr}`;
+      return `Today, ${timeStr}`;
     }
 
-    // If it's tomorrow
     const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
     if (taskDate.getTime() === tomorrow.getTime()) {
-      return `Tomorrow • ${timeStr}`;
+      return `Tomorrow, ${timeStr}`;
     }
 
-    // Otherwise show date and time
     return date.toLocaleString([], {
       month: "short",
       day: "numeric",
@@ -216,55 +146,179 @@ const TaskCard = ({
     });
   };
 
+  const openInMaps = () => {
+    try {
+      let mapsUrl = "";
+      if (task.location?.coordinates) {
+        const [lng, lat] = task.location.coordinates;
+        mapsUrl = `https://maps.google.com/maps?q=${lat},${lng}`;
+      } else {
+        mapsUrl = `https://maps.google.com/maps?q=${encodeURIComponent(
+          task.locationLabel || ""
+        )}`;
+      }
+
+      Linking.openURL(mapsUrl).catch((err) => {
+        console.error("❌ Error opening maps:", err);
+        Alert.alert("Error", "Could not open maps application");
+      });
+    } catch (error) {
+      console.error("❌ Error preparing maps URL:", error);
+      Alert.alert("Error", "Could not prepare navigation");
+    }
+  };
+
   return (
     <>
-      <View style={styles.modernTaskCard}>
-        <View style={styles.taskCardHeader}>
-          <View style={styles.taskPriority} />
-          <View style={styles.taskMainContent}>
-            <Text style={styles.modernTaskTitle} numberOfLines={2}>
-              {task.title}
-            </Text>
-            <View style={styles.taskTimeContainer}>
-              <Ionicons name="time-outline" size={14} color="#666" />
-              <Text style={styles.modernTaskTime}>
+      <Animated.View
+        style={[
+          styles.modernCard,
+          task.signedUp && styles.assignedCard,
+          { transform: [{ scale: scaleValue }] },
+        ]}
+      >
+        {/* Main Content */}
+        <View style={styles.cardContent}>
+          {/* Header Section */}
+          <View style={styles.headerSection}>
+            <View style={styles.titleContainer}>
+              <Text style={styles.modernTitle} numberOfLines={2}>
+                {task.title}
+              </Text>
+              {task.signedUp && (
+                <View style={styles.assignedIndicator}>
+                  <Ionicons name="checkmark-circle" size={12} color="#00C851" />
+                  <Text style={styles.assignedText}>Assigned</Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Time & Location Info */}
+          <View style={styles.infoSection}>
+            <View style={styles.infoItem}>
+              <Ionicons name="time-outline" size={14} color="#007AFF" />
+              <Text style={styles.infoText}>
                 {task.time ? formatTaskDateTime(task.time) : "No time set"}
+              </Text>
+            </View>
+
+            <View style={styles.infoItem}>
+              <Ionicons name="location-outline" size={14} color="#34C759" />
+              <Text style={styles.infoText} numberOfLines={2}>
+                {task.locationLabel || "No location"}
               </Text>
             </View>
           </View>
 
-          {/* Reward Badge */}
-          <View style={styles.rewardBadge}>
-            <Ionicons name="star" size={12} color="#FFD700" />
-            <Text style={styles.rewardText}>+{task.pointsReward || 1}</Text>
-          </View>
-        </View>
-
-        <Text style={styles.modernTaskDescription} numberOfLines={2}>
-          {task.description}
-        </Text>
-
-        {/* Task Stats Row - Remove trophy, keep only duration */}
-        <View style={styles.taskStatsRow}>
-          <View style={styles.statItem}>
-            <Ionicons name="time" size={14} color="#666" />
-            <Text style={styles.statText}>{task.estimatedHours || 1}h</Text>
-          </View>
-          {/* Remove the trophy stat item completely */}
-        </View>
-
-        <View style={styles.taskCardFooter}>
-          <View style={styles.locationContainer}>
-            <Ionicons name="location-outline" size={16} color="#666" />
-            <Text style={styles.modernLocationText} numberOfLines={1}>
-              {task.locationLabel || "No location selected"}
+          {/* Description */}
+          <View style={styles.descriptionSection}>
+            <Text
+              style={styles.descriptionText}
+              numberOfLines={showFullDescription ? undefined : 2}
+            >
+              {task.description}
             </Text>
-          </View>
-          {renderActionButtons()}
-        </View>
-      </View>
 
-      {/* Feedback Modal */}
+            {task.description && task.description.length > 80 && (
+              <TouchableOpacity
+                style={styles.expandButton}
+                onPress={() => setShowFullDescription(!showFullDescription)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.expandText}>
+                  {showFullDescription ? "Show less" : "Read more"}
+                </Text>
+                <Ionicons
+                  name={showFullDescription ? "chevron-up" : "chevron-down"}
+                  size={12}
+                  color="#007AFF"
+                />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Task Stats */}
+          <View style={styles.statsSection}>
+            <View style={styles.statChip}>
+              <Ionicons name="hourglass-outline" size={12} color="#FF8A00" />
+              <Text style={styles.statText}>{task.estimatedHours || 1}h</Text>
+            </View>
+
+            {/* ✅ Points chip next to hours */}
+            <View style={styles.statChip}>
+              <Ionicons name="diamond" size={12} color="#FFD700" />
+              <Text style={styles.statText}>+{task.pointsReward || 1}</Text>
+            </View>
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.actionSection}>
+            <View style={styles.actionButtons}>
+              {!task.signedUp ? (
+                <TouchableOpacity
+                  style={styles.joinButton}
+                  onPress={handleSignUp}
+                  onPressIn={handlePressIn}
+                  onPressOut={handlePressOut}
+                  activeOpacity={0.9}
+                >
+                  <Ionicons name="add" size={16} color="#fff" />
+                  <Text style={styles.joinButtonText}>Join Task</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.assignedActions}>
+                  <TouchableOpacity
+                    style={styles.navigationBtn}
+                    onPress={() => {
+                      if (task.locationLabel) {
+                        Alert.alert("📍 Navigate to Task", task.locationLabel, [
+                          { text: "Cancel", style: "cancel" },
+                          {
+                            text: "Open Maps",
+                            onPress: openInMaps,
+                            style: "default",
+                          },
+                        ]);
+                      }
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="navigate" size={16} color="#007AFF" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={handleCancel}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="trash-outline" size={16} color="#FF3B30" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.completeButton}
+                    onPress={handleCompletePress}
+                    onPressIn={handlePressIn}
+                    onPressOut={handlePressOut}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="checkmark" size={18} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+
+        {/* ✅ Bottom Status Bar - Orange for New, Green for Assigned */}
+        <View
+          style={[
+            styles.bottomStatusBar,
+            { backgroundColor: task.signedUp ? "#00C851" : "#FF8A00" }, // Orange for new tasks
+          ]}
+        />
+      </Animated.View>
+
       <FeedbackModal
         visible={showFeedbackModal}
         onClose={handleCloseFeedbackModal}
@@ -272,7 +326,7 @@ const TaskCard = ({
         setFeedback={setFeedback}
         onSubmit={handleCompleteTask}
         loading={submitting}
-        pointsReward={task.pointsReward || 1} // Pass points to modal
+        pointsReward={task.pointsReward || 1}
       />
     </>
   );
@@ -280,165 +334,244 @@ const TaskCard = ({
 
 export default TaskCard;
 
+// ✅ MODERN STYLES - CLEAN DESIGN
 const styles = StyleSheet.create({
-  modernTaskCard: {
+  modernCard: {
     backgroundColor: "#fff",
     borderRadius: 16,
-    padding: 20,
     marginBottom: 16,
     shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-    borderLeftWidth: 4,
-    borderLeftColor: "#FF9800",
+    elevation: 8,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#f0f0f0",
   },
-  taskCardHeader: {
+  assignedCard: {
+    shadowColor: "#00C851",
+    shadowOpacity: 0.15,
+    backgroundColor: "#fafffe",
+    borderColor: "#e8f5e8",
+  },
+  bottomStatusBar: {
+    height: 4,
+    width: "100%",
+    // Optional: Add subtle inner shadow effect
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: -1 },
+    elevation: 2,
+  },
+  cardContent: {
+    padding: 20,
+  },
+
+  // Header Section
+  headerSection: {
     flexDirection: "row",
     alignItems: "flex-start",
-    marginBottom: 12,
-  },
-  taskPriority: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#FF9800",
-    marginRight: 12,
-    marginTop: 6,
-  },
-  taskMainContent: {
-    flex: 1,
-  },
-  modernTaskTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#222",
-    marginBottom: 6,
-  },
-  taskTimeContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  modernTaskTime: {
-    fontSize: 14,
-    color: "#666",
-    marginLeft: 6,
-    fontWeight: "500",
-  },
-  modernTaskDescription: {
-    fontSize: 15,
-    color: "#555",
-    lineHeight: 22,
+    justifyContent: "space-between",
     marginBottom: 16,
   },
-  taskCardFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  locationContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+  titleContainer: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
     marginRight: 12,
   },
-  modernLocationText: {
-    fontSize: 14,
-    color: "#666",
-    marginLeft: 8,
-    flex: 1,
+  modernTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1D1D1F",
+    lineHeight: 24,
+    marginBottom: 4,
   },
-  modernRegisterButton: {
-    backgroundColor: "#4CAF50",
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    shadowColor: "#4CAF50",
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
-  assignedButtonContainer: {
+  assignedIndicator: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-  },
-  modernCancelButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#fff5f5",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#ffe0e0",
-  },
-  modernCompleteButton: {
-    backgroundColor: "#FF9800",
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    shadowColor: "#FF9800",
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
-  buttonContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-  },
-  registerButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  completeButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  rewardBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFF9E6",
+    backgroundColor: "#E8F5E8",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#FFE082",
+    alignSelf: "flex-start",
   },
-  rewardText: {
-    fontSize: 12,
-    fontWeight: "bold",
-    color: "#F57F17",
+  assignedText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#00C851",
     marginLeft: 4,
   },
-  taskStatsRow: {
+
+  // Info Section
+  infoSection: {
+    flexDirection: "column", // Changed from row to column
+    marginBottom: 16,
+    gap: 8, // Reduced gap
+  },
+  infoItem: {
+    flexDirection: "row",
+    alignItems: "flex-start", // Changed to flex-start for multiline
+    minWidth: 0,
+  },
+  infoText: {
+    fontSize: 13,
+    color: "#6B6B6B",
+    fontWeight: "500",
+    marginLeft: 8,
+    flex: 1,
+    lineHeight: 18, // Better line height for multiline
+  },
+
+  // Description Section
+  descriptionSection: {
+    marginBottom: 16,
+  },
+  descriptionText: {
+    fontSize: 14,
+    color: "#6B6B6B",
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  expandButton: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    alignSelf: "flex-start",
+  },
+  expandText: {
+    fontSize: 12,
+    color: "#007AFF",
+    fontWeight: "600",
+    marginRight: 4,
+  },
+
+  // Stats Section
+  statsSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+    gap: 8,
+  },
+  statChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8F9FA",
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: "#f8f9fa",
-    borderRadius: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#E9ECEF",
   },
-  statItem: {
-    flexDirection: "row",
-    alignItems: "center",
+  priorityChip: {
+    backgroundColor: "#FFF5F5",
+    borderColor: "#FED7D7",
   },
   statText: {
     fontSize: 12,
-    color: "#666",
+    color: "#495057",
     fontWeight: "600",
+    marginLeft: 4,
+  },
+
+  // Action Section
+  actionSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end", // Align everything to the right
+  },
+  actionButtons: {
+    alignItems: "flex-end",
+  },
+
+  // Join Button
+  joinButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#007AFF", // Modern blue instead of green
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+    shadowColor: "#007AFF", // Blue shadow instead of green
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+
+  joinButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
     marginLeft: 6,
+  },
+
+  // Assigned Actions
+  assignedActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+
+  // Navigation button styling (unchanged but repositioned)
+  navigationBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#E3F2FD",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#BBDEFB",
+    shadowColor: "#007AFF",
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+
+  // Cancel/trash button styling
+  cancelButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#FFEBEE",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#FFCDD2",
+    shadowColor: "#FF3B30",
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+
+  // ✅ New green circle complete button
+  completeButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#00C851", // Green background
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#00A843", // Darker green border
+    shadowColor: "#00C851",
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
+  },
+
+  // New styles for modern corner accent
+  cornerAccent: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: 8,
+    height: 8,
+    borderTopRightRadius: 16,
+    borderBottomLeftRadius: 16,
+    // No shadow for the accent
   },
 });

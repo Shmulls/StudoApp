@@ -1,11 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const CompletedTask = require("../models/CompletedTask");
-const Notification = require("../models/Notification"); // Add this import
-const Task = require("../models/Task"); // Add this import
+const Task = require("../models/Task"); // ✅ Add this import
+const Notification = require("../models/Notification");
 
 router.post("/completed-tasks", async (req, res) => {
   try {
+    console.log("CompletedTask POST body:", req.body);
+
     const {
       userId,
       taskId,
@@ -15,13 +17,14 @@ router.post("/completed-tasks", async (req, res) => {
       time,
       signedUp,
       feedback,
-      userName, // Add this parameter
-      userImage, // Add this parameter
+      userName,
+      userImage,
+      pointsReward,
+      estimatedHours,
+      completedAt,
     } = req.body;
 
-    console.log("CompletedTask POST body:", req.body);
-
-    // Save completed task
+    // 1. Create the completed task record
     const completedTask = new CompletedTask({
       userId,
       taskId,
@@ -29,45 +32,66 @@ router.post("/completed-tasks", async (req, res) => {
       description,
       location,
       time,
-      signedUp,
-      feedback,
-      completedAt: new Date(),
+      signedUp: signedUp || false,
+      feedback: feedback || "",
+      completedAt: completedAt || new Date(),
+      pointsReward: pointsReward || 1,
+      estimatedHours: estimatedHours || 1,
     });
 
     await completedTask.save();
+    console.log("✅ CompletedTask created successfully");
 
-    // Find the original task to get the organization owner (createdBy)
-    const originalTask = await Task.findById(taskId);
+    // 2. ✅ UPDATE THE ORIGINAL TASK TO MARK AS COMPLETED
+    const updatedTask = await Task.findByIdAndUpdate(
+      taskId,
+      {
+        completed: true,
+        completedAt: new Date(),
+        completedBy: userId,
+      },
+      { new: true } // Return the updated document
+    );
 
-    if (originalTask && originalTask.createdBy !== userId) {
-      // Create notification for organization owner with actual user info
+    console.log(
+      "✅ Original task updated to completed:",
+      updatedTask ? "SUCCESS" : "FAILED"
+    );
+
+    // 3. Create notification (your existing code)
+    const task = await Task.findById(taskId);
+    if (task && task.createdBy !== userId) {
       const notification = new Notification({
         title: `Task "${title}" Completed`,
-        message: `A user has completed the task "${title}"${
-          feedback ? ` with feedback: ${feedback}` : "."
-        }`,
+        message: `A user has completed the task "${title}" with feedback: ${feedback}`,
         type: "task_completed",
-        userId: originalTask.createdBy, // Organization owner who created the task
+        userId: task.createdBy,
         taskId: taskId,
         completedBy: {
           id: userId,
-          name: userName || "Unknown User", // Use the actual user name
-          image: userImage || null, // Use the actual user image
+          name: userName,
+          image: userImage,
         },
-        read: false,
+        status: "unread",
       });
 
       await notification.save();
       console.log("Task completion notification created:", notification);
 
-      // Send real-time notification
-      const io = req.app.get("io");
-      if (io) {
-        io.to(`org_${originalTask.createdBy}`).emit(
-          "new-notification",
-          notification
+      // ✅ Safe socket emission
+      if (req.io) {
+        req.io.emit(`notification_${task.createdBy}`, {
+          title: `Task "${title}" Completed`,
+          message: `${userName} completed your task with feedback: ${feedback}`,
+          type: "task_completed",
+          taskId: taskId,
+          completedBy: { id: userId, name: userName, image: userImage },
+        });
+        console.log(`Emitted notification to org_${task.createdBy}`);
+      } else {
+        console.log(
+          "⚠️ Socket.io not available, skipping real-time notification"
         );
-        console.log(`Emitted notification to org_${originalTask.createdBy}`);
       }
     }
 
@@ -75,10 +99,14 @@ router.post("/completed-tasks", async (req, res) => {
       success: true,
       message: "Task completed successfully",
       completedTask,
+      taskUpdated: !!updatedTask,
     });
   } catch (error) {
-    console.error("Error saving completed task:", error);
-    res.status(500).json({ error: "Failed to save completed task" });
+    console.error("❌ Error in completed-tasks route:", error);
+    res.status(500).json({
+      error: "Failed to complete task",
+      details: error.message,
+    });
   }
 });
 

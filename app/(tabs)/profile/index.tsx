@@ -1,9 +1,11 @@
 import { useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Image,
   ScrollView,
@@ -50,6 +52,89 @@ const ProfileScreen = () => {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<boolean>(false);
 
+  // Add avatar states for Cloudinary
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  // Cloudinary configuration (same as signup)
+  const CLOUDINARY_CLOUD_NAME = "dwmb1pxju";
+  const CLOUDINARY_UPLOAD_PRESET = "avatar_upload";
+
+  // Load avatar on component mount
+  useEffect(() => {
+    const loadUserAvatar = async () => {
+      try {
+        // First try AsyncStorage
+        const storedAvatarUrl = await AsyncStorage.getItem("userAvatarUrl");
+        if (storedAvatarUrl) {
+          setAvatarUrl(storedAvatarUrl);
+          console.log(
+            "👤 Profile: Loaded avatar from storage:",
+            storedAvatarUrl
+          );
+          return;
+        }
+
+        // Then try user metadata
+        const metadataAvatar = user?.unsafeMetadata?.avatarUrl as string;
+        if (metadataAvatar) {
+          setAvatarUrl(metadataAvatar);
+          console.log(
+            "👤 Profile: Loaded avatar from metadata:",
+            metadataAvatar
+          );
+        }
+      } catch (error) {
+        console.log("Could not load avatar:", error);
+      }
+    };
+
+    if (user) {
+      loadUserAvatar();
+    }
+  }, [user]);
+
+  const uploadToCloudinary = async (imageUri: string) => {
+    try {
+      console.log("☁️ Profile: Uploading to Cloudinary...");
+
+      const formData = new FormData();
+      formData.append("file", {
+        uri: imageUri,
+        type: "image/jpeg",
+        name: "avatar.jpg",
+      } as any);
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+      formData.append("folder", "avatars");
+
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: "POST",
+          body: formData,
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log(
+          "✅ Profile: Cloudinary upload successful:",
+          data.secure_url
+        );
+        return data.secure_url;
+      } else {
+        throw new Error(data.error?.message || "Upload failed");
+      }
+    } catch (error) {
+      console.error("❌ Profile: Cloudinary upload failed:", error);
+      throw error;
+    }
+  };
+
   const handleSave = async (field: keyof typeof fieldValues) => {
     try {
       await user?.update({
@@ -89,34 +174,68 @@ const ProfileScreen = () => {
     }
   };
 
+  // Updated pickImage function with Cloudinary
   const pickImage = async () => {
-    const permissionResult =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (permissionResult.granted === false) {
-      alert("Permission to access camera roll is required!");
-      return;
-    }
-
     try {
+      // Request permissions
+      const permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permissionResult.granted === false) {
+        Alert.alert(
+          "Permission Required",
+          "Permission to access camera roll is required!"
+        );
+        return;
+      }
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 1,
+        quality: 0.8,
       });
 
-      if (!result.canceled) {
-        const selectedAsset = result.assets[0];
-        const response = await fetch(selectedAsset.uri);
-        const blob = await response.blob();
+      if (!result.canceled && result.assets[0]) {
+        setAvatarUploading(true);
+        const imageUri = result.assets[0].uri;
 
-        await user?.setProfileImage({ file: blob });
-        await user?.reload();
+        try {
+          // Upload to Cloudinary
+          const cloudinaryUrl = await uploadToCloudinary(imageUri);
+
+          // Update local state immediately
+          setAvatarUrl(cloudinaryUrl);
+
+          // Store in AsyncStorage
+          await AsyncStorage.setItem("userAvatarUrl", cloudinaryUrl);
+
+          // Update user metadata
+          await user?.update({
+            unsafeMetadata: {
+              ...user?.unsafeMetadata,
+              avatarUrl: cloudinaryUrl,
+            },
+          });
+
+          console.log("✅ Profile: Avatar updated successfully");
+          Alert.alert("Success", "Profile picture updated successfully!");
+        } catch (error) {
+          console.error("❌ Profile: Avatar upload failed:", error);
+          Alert.alert(
+            "Upload Failed",
+            "Could not update your profile picture. Please try again."
+          );
+        } finally {
+          setAvatarUploading(false);
+        }
       }
     } catch (error) {
       console.error("Error updating profile image:", error);
-      alert("Failed to update profile picture. Please try again.");
+      Alert.alert(
+        "Error",
+        "Failed to update profile picture. Please try again."
+      );
+      setAvatarUploading(false);
     }
   };
 
@@ -266,7 +385,15 @@ const ProfileScreen = () => {
     );
   }
 
-  const { firstName, lastName, emailAddresses, imageUrl } = user;
+  // Get user name from metadata since we store it there
+  const firstName =
+    (user?.unsafeMetadata?.firstName as string) || user?.firstName || "";
+  const lastName =
+    (user?.unsafeMetadata?.lastName as string) || user?.lastName || "";
+  const fullName =
+    (user?.unsafeMetadata?.fullName as string) ||
+    `${firstName} ${lastName}`.trim() ||
+    "User";
 
   return (
     <View style={styles.container}>
@@ -287,26 +414,44 @@ const ProfileScreen = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Profile Card */}
+        {/* Profile Card - Updated with Cloudinary avatar */}
         <View style={styles.profileCard}>
           <TouchableOpacity
             style={styles.profileImageWrapper}
             onPress={pickImage}
+            disabled={avatarUploading}
           >
-            <Image source={{ uri: imageUrl }} style={styles.profileImage} />
+            {avatarUploading ? (
+              <View style={[styles.profileImage, styles.uploadingContainer]}>
+                <ActivityIndicator size="large" color="#FF9800" />
+              </View>
+            ) : (
+              <Image
+                source={{
+                  uri: avatarUrl || user?.imageUrl || undefined,
+                }}
+                style={styles.profileImage}
+                onError={() => {
+                  console.log("Failed to load profile avatar");
+                  setAvatarUrl(null);
+                }}
+              />
+            )}
             <View style={styles.editImageIcon}>
-              <Ionicons name="camera" size={16} color="#fff" />
+              <Ionicons
+                name={avatarUploading ? "hourglass" : "camera"}
+                size={16}
+                color="#fff"
+              />
             </View>
           </TouchableOpacity>
-          <Text style={styles.userName}>
-            {firstName} {lastName}
-          </Text>
+          <Text style={styles.userName}>{fullName}</Text>
           <Text style={styles.userEmail}>
-            {emailAddresses[0]?.emailAddress}
+            {user?.emailAddresses[0]?.emailAddress}
           </Text>
         </View>
 
-        {/* Profile Fields */}
+        {/* Profile Fields - keep all your existing renderField calls */}
         <View style={styles.fieldsContainer}>
           {renderField("Phone Number", "phoneNumber", "call")}
           {renderField("Age", "age", "calendar")}
@@ -316,7 +461,7 @@ const ProfileScreen = () => {
           {renderPasswordField()}
         </View>
 
-        {/* Delete Account Button */}
+        {/* Delete Account Button - keep unchanged */}
         <TouchableOpacity
           style={styles.deleteButton}
           onPress={() => {
@@ -418,6 +563,11 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     backgroundColor: "#f0f0f0",
+  },
+  uploadingContainer: {
+    backgroundColor: "#f8f9fa",
+    alignItems: "center",
+    justifyContent: "center",
   },
   editImageIcon: {
     position: "absolute",

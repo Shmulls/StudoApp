@@ -1,9 +1,11 @@
 import { useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Image,
   ScrollView,
@@ -31,6 +33,159 @@ const OrganizationProfile = () => {
   });
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<boolean>(false);
+
+  // Add avatar states for Cloudinary
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  // Cloudinary configuration
+  const CLOUDINARY_CLOUD_NAME = "dwmb1pxju";
+  const CLOUDINARY_UPLOAD_PRESET = "avatar_upload";
+
+  // Load avatar on component mount
+  useEffect(() => {
+    const loadOrganizationAvatar = async () => {
+      try {
+        // First try AsyncStorage
+        const storedAvatarUrl = await AsyncStorage.getItem(
+          "organizationAvatarUrl"
+        );
+        if (storedAvatarUrl) {
+          setAvatarUrl(storedAvatarUrl);
+          console.log(
+            "🏢 Profile: Loaded avatar from storage:",
+            storedAvatarUrl
+          );
+          return;
+        }
+
+        // Then try user metadata
+        const metadataAvatar = user?.unsafeMetadata?.avatarUrl as string;
+        if (metadataAvatar) {
+          setAvatarUrl(metadataAvatar);
+          console.log(
+            "🏢 Profile: Loaded avatar from metadata:",
+            metadataAvatar
+          );
+        }
+      } catch (error) {
+        console.log("Could not load organization avatar:", error);
+      }
+    };
+
+    if (user) {
+      loadOrganizationAvatar();
+    }
+  }, [user]);
+
+  const uploadToCloudinary = async (imageUri: string) => {
+    try {
+      console.log("☁️ Organization Profile: Uploading to Cloudinary...");
+
+      const formData = new FormData();
+      formData.append("file", {
+        uri: imageUri,
+        type: "image/jpeg",
+        name: "organization-logo.jpg",
+      } as any);
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+      formData.append("folder", "organization-logos");
+
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: "POST",
+          body: formData,
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log(
+          "✅ Organization Profile: Cloudinary upload successful:",
+          data.secure_url
+        );
+        return data.secure_url;
+      } else {
+        throw new Error(data.error?.message || "Upload failed");
+      }
+    } catch (error) {
+      console.error(
+        "❌ Organization Profile: Cloudinary upload failed:",
+        error
+      );
+      throw error;
+    }
+  };
+
+  // Updated pickImage function with Cloudinary
+  const pickImage = async () => {
+    try {
+      // Request permissions
+      const permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permissionResult.granted === false) {
+        Alert.alert(
+          "Permission Required",
+          "Permission to access camera roll is required!"
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setAvatarUploading(true);
+        const imageUri = result.assets[0].uri;
+
+        try {
+          // Upload to Cloudinary
+          const cloudinaryUrl = await uploadToCloudinary(imageUri);
+
+          // Update local state immediately
+          setAvatarUrl(cloudinaryUrl);
+
+          // Store in AsyncStorage
+          await AsyncStorage.setItem("organizationAvatarUrl", cloudinaryUrl);
+
+          // Update user metadata
+          await user?.update({
+            unsafeMetadata: {
+              ...user?.unsafeMetadata,
+              avatarUrl: cloudinaryUrl,
+            },
+          });
+
+          console.log("✅ Organization Profile: Logo updated successfully");
+          Alert.alert("Success", "Organization logo updated successfully!");
+        } catch (error) {
+          console.error("❌ Organization Profile: Logo upload failed:", error);
+          Alert.alert(
+            "Upload Failed",
+            "Could not update your organization logo. Please try again."
+          );
+        } finally {
+          setAvatarUploading(false);
+        }
+      }
+    } catch (error) {
+      console.error("Error updating organization logo:", error);
+      Alert.alert(
+        "Error",
+        "Failed to update organization logo. Please try again."
+      );
+      setAvatarUploading(false);
+    }
+  };
 
   const handleSavePhone = async () => {
     try {
@@ -79,41 +234,6 @@ const OrganizationProfile = () => {
       setPasswordError(
         "Failed to change password. Please check your current password."
       );
-    }
-  };
-
-  const pickImage = async () => {
-    const permissionResult =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (permissionResult.granted === false) {
-      Alert.alert(
-        "Permission Required",
-        "Permission to access camera roll is required!"
-      );
-      return;
-    }
-
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-
-      if (!result.canceled) {
-        const selectedAsset = result.assets[0];
-        const response = await fetch(selectedAsset.uri);
-        const blob = await response.blob();
-
-        await user?.setProfileImage({ file: blob });
-        await user?.reload();
-        Alert.alert("Success", "Organization logo updated successfully!");
-      }
-    } catch (error) {
-      console.error("Error updating profile image:", error);
-      Alert.alert("Error", "Failed to update logo. Please try again.");
     }
   };
 
@@ -255,7 +375,7 @@ const OrganizationProfile = () => {
     );
   }
 
-  const { firstName, lastName, emailAddresses, imageUrl } = user;
+  const { firstName, lastName, emailAddresses } = user;
 
   return (
     <View style={styles.container}>
@@ -276,19 +396,40 @@ const OrganizationProfile = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Organization Profile Card */}
+        {/* Organization Profile Card - Updated with Cloudinary avatar */}
         <View style={styles.profileCard}>
           <TouchableOpacity
             style={styles.profileImageWrapper}
             onPress={pickImage}
+            disabled={avatarUploading}
           >
-            <Image source={{ uri: imageUrl }} style={styles.profileImage} />
+            {avatarUploading ? (
+              <View style={[styles.profileImage, styles.uploadingContainer]}>
+                <ActivityIndicator size="large" color="#FF9800" />
+              </View>
+            ) : (
+              <Image
+                source={{
+                  uri: avatarUrl || user?.imageUrl || undefined,
+                }}
+                style={styles.profileImage}
+                onError={() => {
+                  console.log("Failed to load organization profile logo");
+                  setAvatarUrl(null);
+                }}
+              />
+            )}
             <View style={styles.editImageIcon}>
-              <Ionicons name="camera" size={16} color="#fff" />
+              <Ionicons
+                name={avatarUploading ? "hourglass" : "camera"}
+                size={16}
+                color="#fff"
+              />
             </View>
           </TouchableOpacity>
           <Text style={styles.userName}>
-            {firstName} {lastName}
+            {(user?.unsafeMetadata?.organizationName as string) ||
+              `${firstName} ${lastName}`}
           </Text>
           <Text style={styles.userEmail}>
             {emailAddresses[0]?.emailAddress}
@@ -299,7 +440,7 @@ const OrganizationProfile = () => {
           </View>
         </View>
 
-        {/* Organization Fields */}
+        {/* Organization Fields - keep all your existing renderPhoneField and renderPasswordField */}
         <View style={styles.fieldsContainer}>
           {renderPhoneField()}
           {renderPasswordField()}
@@ -314,11 +455,11 @@ const OrganizationProfile = () => {
           <Text style={styles.infoText}>
             As an organization, you can create and manage tasks for your
             community. Your profile is simplified to focus on essential contact
-            information.
+            information and branding.
           </Text>
         </View>
 
-        {/* Delete Account Button */}
+        {/* Delete Account Button - keep unchanged */}
         <TouchableOpacity
           style={styles.deleteButton}
           onPress={() => {
@@ -364,6 +505,7 @@ const OrganizationProfile = () => {
 
 export default OrganizationProfile;
 
+// Add the new uploading container style to your existing StyleSheet
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -422,6 +564,11 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     backgroundColor: "#f0f0f0",
+  },
+  uploadingContainer: {
+    backgroundColor: "#f8f9fa",
+    alignItems: "center",
+    justifyContent: "center",
   },
   editImageIcon: {
     position: "absolute",

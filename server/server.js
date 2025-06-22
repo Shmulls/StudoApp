@@ -24,7 +24,9 @@ mongoose
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // Allow all origins (update this for production)
+    origin: "*", // This should allow all origins
+    methods: ["GET", "POST", "PATCH", "DELETE"],
+    credentials: true,
   },
 });
 
@@ -64,4 +66,6 @@ app.use("/api", completedTasksRouter);
 
 // Start the server
 const PORT = process.env.PORT || 5001;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, "0.0.0.0", () =>
+  console.log(`Server running on port ${PORT}`)
+);

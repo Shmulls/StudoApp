@@ -1,10 +1,14 @@
 import { useSignUp } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Picker } from "@react-native-picker/picker";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Image,
   Modal,
   ScrollView,
   StyleSheet,
@@ -35,6 +39,106 @@ const SignUpScreen = () => {
   const [pendingVerification, setPendingVerification] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+
+  // Add avatar states
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  const CLOUDINARY_CLOUD_NAME = "dwmb1pxju";
+  const CLOUDINARY_UPLOAD_PRESET = "avatar_upload";
+
+  const uploadToCloudinary = async (imageUri: string) => {
+    try {
+      console.log("☁️ Uploading to Cloudinary...");
+
+      // Create FormData
+      const formData = new FormData();
+      formData.append("file", {
+        uri: imageUri,
+        type: "image/jpeg",
+        name: "avatar.jpg",
+      } as any);
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+      formData.append("folder", "avatars");
+
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: "POST",
+          body: formData,
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log("✅ Cloudinary upload successful:", data.secure_url);
+        return data.secure_url;
+      } else {
+        throw new Error(data.error?.message || "Upload failed");
+      }
+    } catch (error) {
+      console.error("❌ Cloudinary upload failed:", error);
+      throw error;
+    }
+  };
+
+  const pickAvatar = async () => {
+    try {
+      // Request permissions
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Required",
+          "We need camera roll permissions to add a profile picture.",
+          [{ text: "OK" }]
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setAvatarUploading(true);
+        const imageUri = result.assets[0].uri;
+
+        try {
+          // Upload to Cloudinary
+          const cloudinaryUrl = await uploadToCloudinary(imageUri);
+
+          // Set the avatar URL
+          setAvatar(cloudinaryUrl);
+
+          // Store the URL for later use
+          await AsyncStorage.setItem("pendingAvatarUrl", cloudinaryUrl);
+
+          Alert.alert("Success", "Profile picture uploaded successfully!");
+        } catch (error) {
+          Alert.alert(
+            "Upload Failed",
+            "Could not upload your picture. Please try again."
+          );
+        } finally {
+          setAvatarUploading(false);
+        }
+      }
+    } catch (error) {
+      console.log("Avatar picker error:", error);
+      Alert.alert("Error", "Failed to pick image. Please try again.");
+      setAvatarUploading(false);
+    }
+  };
 
   const handleSignUp = async () => {
     setError("");
@@ -47,16 +151,29 @@ const SignUpScreen = () => {
     try {
       if (!isLoaded) throw new Error("Sign-up service is unavailable.");
 
-      // Create user with public metadata
+      // Make sure all required fields are present
+      if (!firstName.trim() || !lastName.trim()) {
+        setError("First name and last name are required.");
+        setLoading(false);
+        return;
+      }
+
+      // Create signup with only valid Clerk parameters
       await signUp.create({
         emailAddress: email,
         password,
         unsafeMetadata: {
-          phoneNumber,
-          age,
-          institution,
-          degree,
-          yearOfStudy,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          phoneNumber: phoneNumber.trim(),
+          age: age.trim(),
+          institution: institution.trim(),
+          degree: degree.trim(),
+          yearOfStudy: yearOfStudy.trim(),
+          role: "student",
+          fullName: `${firstName.trim()} ${lastName.trim()}`,
+          // Add avatar URL if available
+          ...(avatar && { avatarUrl: avatar }),
         },
       });
 
@@ -64,6 +181,7 @@ const SignUpScreen = () => {
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setPendingVerification(true);
     } catch (err: any) {
+      console.error("Signup error:", err);
       setError(err.errors ? err.errors[0].message : "Sign-up failed.");
     } finally {
       setLoading(false);
@@ -81,7 +199,13 @@ const SignUpScreen = () => {
         code,
       });
       await setActive({ session: completeSignUp.createdSessionId });
-      router.push("/auth"); // Navigate to login
+
+      // Store avatar URL for the home screen to use
+      if (avatar) {
+        await AsyncStorage.setItem("userAvatarUrl", avatar);
+      }
+
+      router.push("/auth");
     } catch (err: any) {
       setError(err.errors ? err.errors[0].message : "Verification failed.");
     } finally {
@@ -193,10 +317,72 @@ const SignUpScreen = () => {
 
         {/* Form */}
         <View style={styles.formCard}>
+          {/* Avatar Upload Section - Add this before Personal Information */}
+          <View style={styles.avatarSection}>
+            <Text style={styles.inputLabel}>Profile Picture (Optional)</Text>
+            <TouchableOpacity
+              style={styles.avatarContainer}
+              onPress={pickAvatar}
+              disabled={avatarUploading}
+            >
+              {avatarUploading ? (
+                <View style={styles.avatarLoading}>
+                  <ActivityIndicator size="large" color="#FF9800" />
+                  <Text style={styles.avatarLoadingText}>Uploading...</Text>
+                </View>
+              ) : avatar ? (
+                <>
+                  <Image source={{ uri: avatar }} style={styles.avatarImage} />
+                  <View style={styles.avatarOverlay}>
+                    <Ionicons name="camera-outline" size={20} color="#fff" />
+                  </View>
+                </>
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Ionicons name="camera-outline" size={32} color="#999" />
+                  <Text style={styles.avatarText}>Add Photo</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <Text style={styles.avatarHint}>
+              {avatar ? "Tap to change photo" : "Add a profile picture"}
+            </Text>
+          </View>
+
           {/* Personal Information */}
           <View style={styles.sectionHeader}>
             <Ionicons name="person-outline" size={20} color="#FF9800" />
             <Text style={styles.sectionTitle}>Personal Information</Text>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>First Name</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="person-outline" size={20} color="#666" />
+              <TextInput
+                style={styles.modernInput}
+                placeholder="Enter your first name"
+                placeholderTextColor="#999"
+                value={firstName}
+                onChangeText={setFirstName}
+                autoCapitalize="words"
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Last Name</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="person-outline" size={20} color="#666" />
+              <TextInput
+                style={styles.modernInput}
+                placeholder="Enter your last name"
+                placeholderTextColor="#999"
+                value={lastName}
+                onChangeText={setLastName}
+                autoCapitalize="words"
+              />
+            </View>
           </View>
 
           <View style={styles.inputGroup}>
@@ -360,7 +546,13 @@ const SignUpScreen = () => {
           <TouchableOpacity
             style={[styles.modernButton, loading && styles.buttonDisabled]}
             onPress={handleSignUp}
-            disabled={loading || !email.trim() || !password.trim()}
+            disabled={
+              loading ||
+              !email.trim() ||
+              !password.trim() ||
+              !firstName.trim() ||
+              !lastName.trim()
+            }
             activeOpacity={0.8}
           >
             <View style={styles.buttonContent}>
@@ -707,5 +899,64 @@ const styles = StyleSheet.create({
     color: "#666",
     textAlign: "center",
     marginBottom: 0,
+  },
+  avatarSection: {
+    alignItems: "center",
+    marginBottom: 24,
+    marginTop: 8,
+  },
+  avatarContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "#f8f9fa",
+    borderWidth: 2,
+    borderColor: "#e0e0e0",
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    marginBottom: 8,
+  },
+  avatarImage: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+  },
+  avatarOverlay: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#FF9800",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  avatarPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: {
+    fontSize: 12,
+    color: "#999",
+    marginTop: 4,
+  },
+  avatarHint: {
+    fontSize: 12,
+    color: "#666",
+    textAlign: "center",
+  },
+  avatarLoading: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarLoadingText: {
+    fontSize: 12,
+    color: "#FF9800",
+    marginTop: 8,
   },
 });

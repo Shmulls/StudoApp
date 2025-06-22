@@ -1,9 +1,13 @@
 import { useSignUp } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -29,6 +33,110 @@ const SignUpOrganization = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Add avatar states
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  // Cloudinary configuration (same as student signup)
+  const CLOUDINARY_CLOUD_NAME = "dwmb1pxju";
+  const CLOUDINARY_UPLOAD_PRESET = "avatar_upload";
+
+  const uploadToCloudinary = async (imageUri: string) => {
+    try {
+      console.log("☁️ Organization: Uploading to Cloudinary...");
+
+      const formData = new FormData();
+      formData.append("file", {
+        uri: imageUri,
+        type: "image/jpeg",
+        name: "organization-logo.jpg",
+      } as any);
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+      formData.append("folder", "organization-logos");
+
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: "POST",
+          body: formData,
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log(
+          "✅ Organization: Cloudinary upload successful:",
+          data.secure_url
+        );
+        return data.secure_url;
+      } else {
+        throw new Error(data.error?.message || "Upload failed");
+      }
+    } catch (error) {
+      console.error("❌ Organization: Cloudinary upload failed:", error);
+      throw error;
+    }
+  };
+
+  const pickAvatar = async () => {
+    try {
+      // Request permissions
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Required",
+          "We need camera roll permissions to add an organization logo.",
+          [{ text: "OK" }]
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setAvatarUploading(true);
+        const imageUri = result.assets[0].uri;
+
+        try {
+          // Upload to Cloudinary
+          const cloudinaryUrl = await uploadToCloudinary(imageUri);
+
+          // Set the avatar URL
+          setAvatar(cloudinaryUrl);
+
+          // Store the URL for later use
+          await AsyncStorage.setItem(
+            "pendingOrganizationLogoUrl",
+            cloudinaryUrl
+          );
+
+          Alert.alert("Success", "Organization logo uploaded successfully!");
+        } catch (error) {
+          Alert.alert(
+            "Upload Failed",
+            "Could not upload your logo. Please try again."
+          );
+        } finally {
+          setAvatarUploading(false);
+        }
+      }
+    } catch (error) {
+      console.log("Avatar picker error:", error);
+      Alert.alert("Error", "Failed to pick image. Please try again.");
+      setAvatarUploading(false);
+    }
+  };
+
   const handleSignUp = async () => {
     setError("");
     if (password !== confirmPassword) {
@@ -37,32 +145,35 @@ const SignUpOrganization = () => {
     }
 
     setLoading(true);
-    let retries = 3;
+    try {
+      if (!isLoaded) throw new Error("Sign-up service is unavailable.");
 
-    while (retries > 0) {
-      try {
-        if (!isLoaded) throw new Error("Sign-up service is unavailable.");
-
-        await signUp.create({
-          emailAddress: email,
-          password,
-          firstName: organizationName,
-          unsafeMetadata: { role: "organization" },
-        });
-
-        await signUp.prepareEmailAddressVerification({
-          strategy: "email_code",
-        });
-        setPendingVerification(true);
-        break;
-      } catch (err: any) {
-        retries -= 1;
-        if (retries === 0) {
-          setError(err.errors ? err.errors[0].message : "Sign-up failed.");
-        }
-      } finally {
+      // Make sure all required fields are present
+      if (!organizationName.trim() || !email.trim() || !password.trim()) {
+        setError("Organization name, email, and password are required.");
         setLoading(false);
+        return;
       }
+
+      // Create signup with organization metadata
+      await signUp.create({
+        emailAddress: email,
+        password,
+        unsafeMetadata: {
+          organizationName: organizationName.trim(),
+          role: "organization",
+          ...(avatar && { avatarUrl: avatar }),
+        },
+      });
+
+      // Initiate email verification
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      setPendingVerification(true);
+    } catch (err: any) {
+      console.error("Organization signup error:", err);
+      setError(err.errors ? err.errors[0].message : "Sign-up failed.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -77,7 +188,13 @@ const SignUpOrganization = () => {
         code,
       });
       await setActive({ session: completeSignUp.createdSessionId });
-      router.push("/");
+
+      // Store avatar URL for the organization feed to use
+      if (avatar) {
+        await AsyncStorage.setItem("organizationAvatarUrl", avatar);
+      }
+
+      router.push("/auth");
     } catch (err: any) {
       setError(err.errors ? err.errors[0].message : "Verification failed.");
     } finally {
@@ -187,6 +304,38 @@ const SignUpOrganization = () => {
 
         {/* Form */}
         <View style={styles.formCard}>
+          {/* Organization Logo Upload Section */}
+          <View style={styles.avatarSection}>
+            <Text style={styles.inputLabel}>Organization Logo (Optional)</Text>
+            <TouchableOpacity
+              style={styles.avatarContainer}
+              onPress={pickAvatar}
+              disabled={avatarUploading}
+            >
+              {avatarUploading ? (
+                <View style={styles.avatarLoading}>
+                  <ActivityIndicator size="large" color="#FF9800" />
+                  <Text style={styles.avatarLoadingText}>Uploading...</Text>
+                </View>
+              ) : avatar ? (
+                <>
+                  <Image source={{ uri: avatar }} style={styles.avatarImage} />
+                  <View style={styles.avatarOverlay}>
+                    <Ionicons name="camera-outline" size={20} color="#fff" />
+                  </View>
+                </>
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Ionicons name="business-outline" size={32} color="#999" />
+                  <Text style={styles.avatarText}>Add Logo</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <Text style={styles.avatarHint}>
+              {avatar ? "Tap to change logo" : "Add your organization logo"}
+            </Text>
+          </View>
+
           <View style={styles.formHeader}>
             <Ionicons name="business-outline" size={24} color="#2196F3" />
             <Text style={styles.formTitle}>Organization Details</Text>
@@ -596,5 +745,64 @@ const styles = StyleSheet.create({
     color: "#666",
     textAlign: "center",
     paddingHorizontal: 20,
+  },
+  avatarSection: {
+    alignItems: "center",
+    marginBottom: 24,
+    marginTop: 8,
+  },
+  avatarContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "#f8f9fa",
+    borderWidth: 2,
+    borderColor: "#e0e0e0",
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    marginBottom: 8,
+  },
+  avatarImage: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+  },
+  avatarOverlay: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#FF9800",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  avatarPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: {
+    fontSize: 12,
+    color: "#999",
+    marginTop: 4,
+  },
+  avatarHint: {
+    fontSize: 12,
+    color: "#666",
+    textAlign: "center",
+  },
+  avatarLoading: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarLoadingText: {
+    fontSize: 12,
+    color: "#FF9800",
+    marginTop: 8,
   },
 });

@@ -6,6 +6,7 @@ import * as WebBrowser from "expo-web-browser";
 import React, { useState } from "react";
 import {
   Animated,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -90,14 +91,14 @@ const AuthScreen = () => {
           <View style={styles.modernLogoContainer}>
             {/* Custom Studo Logo */}
             <View style={styles.logoWrapper}>
-              <View style={styles.logoCircle}>
-                <Text style={styles.logoText}>S</Text>
-              </View>
-              <View style={styles.logoBadge}>
-                <Ionicons name="checkmark" size={12} color="#fff" />
+              <View style={styles.largeLogoContainer}>
+                <Image
+                  source={require("../../assets/images/new_logo.png")}
+                  style={styles.largeLogoImage}
+                  resizeMode="contain"
+                />
               </View>
             </View>
-            <Text style={styles.appName}>Studo</Text>
           </View>
           <Text style={styles.welcomeTitle}>Welcome Back!</Text>
           <Text style={styles.welcomeSubtitle}>
@@ -265,7 +266,7 @@ export default AuthScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "#ffffff",
   },
   scrollContent: {
     flexGrow: 1,
@@ -274,74 +275,43 @@ const styles = StyleSheet.create({
   },
   logoSection: {
     alignItems: "center",
-    paddingVertical: 40,
+    paddingVertical: 1,
+    backgroundColor: "#ffffff",
   },
   modernLogoContainer: {
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 0,
   },
   logoWrapper: {
     position: "relative",
-    marginBottom: 16,
+    marginBottom: 0, // ✅ No extra margin
+    alignItems: "center",
   },
-  logoCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: "#FF9800",
+  largeLogoContainer: {
+    width: 250,
+    height: 240,
+    backgroundColor: "#ffffff",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#FF9800",
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 8,
-    // Gradient effect (you can add react-native-linear-gradient for better gradients)
-    borderWidth: 4,
-    borderColor: "#fff",
+    shadowOffset: { width: 0, height: 8 },
+    marginBottom: 4,
   },
-  logoText: {
-    fontSize: 48,
-    fontWeight: "bold",
-    color: "#fff",
-    textShadowColor: "rgba(0,0,0,0.1)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-  },
-  logoBadge: {
-    position: "absolute",
-    bottom: 8,
-    right: 8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#4CAF50",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 3,
-    borderColor: "#fff",
-    shadowColor: "#4CAF50",
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
-  appName: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#222",
-    letterSpacing: -1,
+  largeLogoImage: {
+    width: 220,
+    height: 220,
   },
   welcomeTitle: {
     fontSize: 28,
     fontWeight: "bold",
     color: "#222",
-    marginBottom: 8,
+    marginBottom: 2,
+    marginTop: 0,
   },
   welcomeSubtitle: {
     fontSize: 16,
     color: "#666",
     textAlign: "center",
+    marginBottom: 24,
   },
   formCard: {
     backgroundColor: "#fff",
@@ -353,6 +323,8 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
+    borderWidth: 1,
+    borderColor: "#f0f0f0", // ✅ Add subtle border to match
   },
   formHeader: {
     flexDirection: "row",

@@ -7,7 +7,6 @@ node_modules/
 .expo/
 dist/
 web-build/
-expo-env.d.ts
 
 # Native
 *.orig.*
@@ -38,3 +37,8 @@ yarn-error.*
 app-example
 npx expo start --android
 
+
+# Expo
+.expo
+dist/
+web-build/

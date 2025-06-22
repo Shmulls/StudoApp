@@ -2,14 +2,16 @@ import CompletedTaskCard from "@/components/CompletedTaskCard";
 import { useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
-import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import { router } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
   Image,
+  Linking, // ✅ Add this import
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -21,6 +23,7 @@ import { useTasks } from "../../../hooks/useTasks";
 
 const HomeScreen = () => {
   const { user } = useUser();
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [tab, setTab] = useState<"new" | "assigned" | "complete">("new");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -35,6 +38,8 @@ const HomeScreen = () => {
   } | null>(null);
   const [locationEnabled, setLocationEnabled] = useState(false);
   const [userTotalPoints, setUserTotalPoints] = useState(0); // Add this state for total points
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null); // Add avatar URL state
+  const [completedTasksData, setCompletedTasks] = useState<any[]>([]); // Add completed tasks state
 
   const {
     tasks,
@@ -53,7 +58,7 @@ const HomeScreen = () => {
   // Task filters for tabs
   const newTasks = visibleTasks.filter((t) => !t.signedUp);
   const assignedTasks = visibleTasks.filter((t) => t.signedUp);
-  const completedTasks = tasks.filter((t) => t.completed);
+  const completedTasks = completedTasksData; // Use the dedicated completed tasks array
 
   // Build period marking for tasks
   const markedDates = tasks.reduce((acc, task) => {
@@ -72,13 +77,6 @@ const HomeScreen = () => {
     return acc;
   }, {} as Record<string, any>);
 
-  // Refetch tasks when the screen is focused
-  useFocusEffect(
-    useCallback(() => {
-      fetchTasks();
-    }, [fetchTasks])
-  );
-
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchTasks();
@@ -86,7 +84,7 @@ const HomeScreen = () => {
   };
 
   // Add Google Geolocation API configuration at the top
-  const GOOGLE_PLACES_API_KEY = "AIzaSyAjyYxXChjy1vRsJqanVMJxjieY1cOCHLA"; // Same as AddTaskModal
+  const GOOGLE_PLACES_API_KEY = process.env.EXPO_PUBLIC_LOCATION_API_KEY; // Use environment variable
 
   // Replace the existing requestLocationPermission function
   const requestLocationPermission = async () => {
@@ -182,6 +180,8 @@ const HomeScreen = () => {
         setLocationEnabled(true);
         console.log("📍 Using stored location:", coords);
         return coords;
+      } else {
+        console.log("⚠️ No valid stored location found");
       }
 
       // If no stored location, clear state
@@ -197,49 +197,43 @@ const HomeScreen = () => {
   };
 
   // Add effect to check location settings when component mounts
+  // ❌ DELETE this effect (Lines 191-193):
+  /*
   useEffect(() => {
     checkAndGetLocation();
   }, []);
+  */
 
-  // Load user's current total points on app start
+  // Load user avatar from AsyncStorage
+  // ❌ DELETE this effect (Lines 195-214):
+  /*
   useEffect(() => {
-    const loadUserPoints = async () => {
+    const loadUserAvatar = async () => {
       try {
-        if (user?.id) {
-          const storedPoints = await AsyncStorage.getItem(
-            `userTotalPoints_${user.id}`
-          );
-          if (storedPoints) {
-            setUserTotalPoints(parseInt(storedPoints, 10));
-            console.log(`📊 Loaded user total points: ${storedPoints}`);
-          }
+        // First try to get avatar from AsyncStorage
+        const storedAvatarUrl = await AsyncStorage.getItem("userAvatarUrl");
+        if (storedAvatarUrl) {
+          setAvatarUrl(storedAvatarUrl);
+          console.log("👤 Loaded avatar from storage:", storedAvatarUrl);
+          return;
+        }
+
+        // Then try to get it from user metadata
+        const metadataAvatar = user?.unsafeMetadata?.avatarUrl as string;
+        if (metadataAvatar) {
+          setAvatarUrl(metadataAvatar);
+          console.log("👤 Loaded avatar from metadata:", metadataAvatar);
         }
       } catch (error) {
-        console.error("Error loading user points:", error);
+        console.log("Could not load avatar:", error);
       }
     };
 
-    loadUserPoints();
-  }, [user?.id]);
-
-  // Save points when they change
-  useEffect(() => {
-    const saveUserPoints = async () => {
-      try {
-        if (user?.id && userTotalPoints >= 0) {
-          await AsyncStorage.setItem(
-            `userTotalPoints_${user.id}`,
-            userTotalPoints.toString()
-          );
-          console.log(`💾 Saved user total points: ${userTotalPoints}`);
-        }
-      } catch (error) {
-        console.error("Error saving user points:", error);
-      }
-    };
-
-    saveUserPoints();
-  }, [userTotalPoints, user?.id]);
+    if (user) {
+      loadUserAvatar();
+    }
+  }, [user]);
+  */
 
   // Haversine formula to calculate distance between two lat/lng points in meters
   const calculateDistance = (
@@ -263,34 +257,58 @@ const HomeScreen = () => {
     return R * c;
   };
 
+  // Add this helper function at the top of your component, after the imports
+  const getCreationTimeFromObjectId = (objectId: string): number => {
+    try {
+      // First 4 bytes of ObjectId represent creation timestamp
+      return parseInt(objectId.substring(0, 8), 16) * 1000;
+    } catch {
+      return 0;
+    }
+  };
+
   // Task sorting and filtering logic
   const getTabData = () => {
     let data: typeof tasks = [];
     switch (tab) {
       case "new":
-        data = newTasks;
+        // ✅ FIX: Show only tasks user hasn't signed up for AND aren't completed
+        data = tasks.filter((t) => !t.signedUp && !t.completed);
+        console.log("📋 New tasks (not signed up):", data.length);
         break;
       case "assigned":
-        data = assignedTasks;
+        // ✅ FIX: Show only tasks user HAS signed up for AND aren't completed
+        data = tasks.filter((t) => t.signedUp && !t.completed);
+        console.log("📋 Assigned tasks (signed up):", data.length);
         break;
       case "complete":
+        // ✅ Show completed tasks from the dedicated completed tasks array
         data = completedTasks;
+        console.log("📋 Completed tasks:", data.length);
         break;
       default:
         data = [];
     }
 
-    // Apply filter
+    // Apply filter with FIXED sorting logic
     if (filter === "newest") {
-      return [...data].sort(
-        (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()
-      );
+      return [...data].sort((a, b) => {
+        // Sort by creation time from ObjectId (newest first)
+        const timeA = getCreationTimeFromObjectId(a._id);
+        const timeB = getCreationTimeFromObjectId(b._id);
+        return timeB - timeA; // Newest created tasks first
+      });
     }
+
     if (filter === "oldest") {
-      return [...data].sort(
-        (a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()
-      );
+      return [...data].sort((a, b) => {
+        // Sort by creation time from ObjectId (oldest first)
+        const timeA = getCreationTimeFromObjectId(a._id);
+        const timeB = getCreationTimeFromObjectId(b._id);
+        return timeA - timeB; // Oldest created tasks first
+      });
     }
+
     if (filter === "location") {
       // Check if location services are enabled and user location is available
       if (!locationEnabled || !userLocation) {
@@ -383,6 +401,7 @@ const HomeScreen = () => {
         return distanceA - distanceB; // Sort by distance (ascending - closest first)
       });
     }
+
     return data;
   };
 
@@ -436,20 +455,332 @@ const HomeScreen = () => {
     }
   };
 
-  const handleTaskComplete = (pointsEarned: number) => {
-    console.log(`🎉 Task completed! Points earned: ${pointsEarned}`);
+  // Update your handleComplete function to properly update points
+  const handleTaskComplete = async (
+    taskId: string,
+    feedback: string,
+    pointsEarned: number
+  ) => {
+    try {
+      console.log("🎯 Completing task:", taskId);
+      console.log("🎯 Feedback:", feedback);
+      console.log("🎯 Points earned:", pointsEarned);
 
-    setUserTotalPoints((prevTotal) => {
-      const newTotal = prevTotal + pointsEarned;
-      console.log(
-        `📊 Total points updated: ${prevTotal} + ${pointsEarned} = ${newTotal}`
-      );
-      return newTotal;
-    });
+      // ✅ Call handleComplete with correct parameters
+      const result = await handleComplete(taskId, feedback, pointsEarned);
 
-    // Refresh tasks to remove completed ones
-    fetchTasks();
+      if (result) {
+        // ✅ Only refresh completed tasks - let the useEffect handle point calculation
+        await fetchCompletedTasks();
+
+        console.log("✅ Task completion handled successfully");
+      }
+    } catch (error) {
+      console.error("❌ Error handling task completion:", error);
+    }
   };
+
+  // Add a function to fetch completed tasks:
+  const fetchCompletedTasks = async () => {
+    if (!user?.id) return;
+
+    try {
+      console.log("🔄 Fetching completed tasks for user:", user.id);
+      const response = await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}/tasks/completed/${user.id}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("✅ Completed tasks fetched:", data.length);
+
+        setCompletedTasks(data);
+
+        // ✅ Cache successful data
+        await AsyncStorage.setItem(
+          `completedTasks_${user.id}`,
+          JSON.stringify(data)
+        );
+      } else {
+        throw new Error(`API returned ${response.status}`);
+      }
+    } catch (error) {
+      console.error("❌ Error fetching completed tasks:", error);
+
+      // ✅ Load cached data on failure
+      try {
+        const cached = await AsyncStorage.getItem(`completedTasks_${user.id}`);
+        if (cached && completedTasksData.length === 0) {
+          setCompletedTasks(JSON.parse(cached));
+          console.log("📱 Loaded cached completed tasks");
+        }
+      } catch (cacheError) {
+        console.log("No cached completed tasks available");
+      }
+    }
+  };
+
+  // Add this test component inside your HomeScreen component
+  const TestAvatarUpload = () => {
+    const [uploading, setUploading] = useState(false);
+
+    // Cloudinary config (same as signup)
+    const CLOUDINARY_CLOUD_NAME = "dwmb1pxju";
+    const CLOUDINARY_UPLOAD_PRESET = "avatar_upload";
+
+    const uploadToCloudinary = async (imageUri: string) => {
+      try {
+        console.log("☁️ Testing Cloudinary upload...");
+
+        const formData = new FormData();
+        formData.append("file", {
+          uri: imageUri,
+          type: "image/jpeg",
+          name: "avatar.jpg",
+        } as any);
+        formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+        formData.append("folder", "avatars");
+
+        const response = await fetch(
+          `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+          {
+            method: "POST",
+            body: formData,
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+
+        const data = await response.json();
+
+        if (response.ok) {
+          console.log("✅ Test Cloudinary upload successful:", data.secure_url);
+          return data.secure_url;
+        } else {
+          throw new Error(data.error?.message || "Upload failed");
+        }
+      } catch (error) {
+        console.error("❌ Test Cloudinary upload failed:", error);
+        throw error;
+      }
+    };
+
+    const pickImage = async () => {
+      try {
+        setUploading(true);
+
+        let result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.7,
+        });
+
+        if (!result.canceled && result.assets[0]) {
+          console.log("🧪 Testing avatar upload with:", result.assets[0].uri);
+
+          // Upload to Cloudinary
+          const cloudinaryUrl = await uploadToCloudinary(result.assets[0].uri);
+
+          // Update local state and storage
+          setAvatarUrl(cloudinaryUrl);
+          await AsyncStorage.setItem("userAvatarUrl", cloudinaryUrl);
+
+          Alert.alert("Success", "Avatar uploaded to Cloudinary successfully!");
+        }
+      } catch (error) {
+        console.error("❌ Avatar upload failed:", error);
+        Alert.alert(
+          "Error",
+          `Upload failed: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`
+        );
+      } finally {
+        setUploading(false);
+      }
+    };
+
+    const testStoredAvatar = async () => {
+      try {
+        setUploading(true);
+        const storedAvatar = await AsyncStorage.getItem("userAvatarUrl");
+
+        if (storedAvatar) {
+          console.log("🧪 Found stored avatar URL:", storedAvatar);
+          setAvatarUrl(storedAvatar);
+          Alert.alert("Success", "Loaded stored avatar!");
+        } else {
+          Alert.alert("No Avatar", "No stored avatar URL found");
+        }
+      } catch (error) {
+        console.error("❌ Load stored avatar failed:", error);
+        Alert.alert(
+          "Error",
+          `Load failed: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`
+        );
+      } finally {
+        setUploading(false);
+      }
+    };
+
+    return (
+      <View style={styles.testSection}>
+        <TouchableOpacity
+          style={styles.testButton}
+          onPress={pickImage}
+          disabled={uploading}
+        >
+          {uploading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.testButtonText}>🧪 Test Cloudinary Upload</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.testButton,
+            { backgroundColor: "#00b894", marginTop: 8 },
+          ]}
+          onPress={testStoredAvatar}
+          disabled={uploading}
+        >
+          {uploading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.testButtonText}>🔄 Load Stored Avatar</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const loadStoredPoints = async () => {
+    if (!user?.id) return;
+
+    try {
+      const storedPoints = await AsyncStorage.getItem(
+        `userTotalPoints_${user.id}`
+      );
+      if (storedPoints) {
+        setUserTotalPoints(parseInt(storedPoints, 10));
+        console.log(`📊 Loaded points for ${user.id}: ${storedPoints}`);
+      }
+    } catch (error) {
+      console.error("Error loading user points:", error);
+    }
+  };
+
+  const checkLocation = async () => {
+    return await checkAndGetLocation();
+  };
+
+  // Load user avatar from AsyncStorage and metadata
+  const loadUserAvatar = async () => {
+    try {
+      // First try to get avatar from AsyncStorage
+      const storedAvatarUrl = await AsyncStorage.getItem("userAvatarUrl");
+      if (storedAvatarUrl) {
+        setAvatarUrl(storedAvatarUrl);
+        console.log("👤 Loaded avatar from storage:", storedAvatarUrl);
+        return;
+      }
+
+      // Then try to get it from user metadata
+      const metadataAvatar = user?.unsafeMetadata?.avatarUrl as string;
+      if (metadataAvatar) {
+        setAvatarUrl(metadataAvatar);
+        console.log("👤 Loaded avatar from metadata:", metadataAvatar);
+      }
+    } catch (error) {
+      console.log("Could not load avatar:", error);
+    }
+  };
+
+  // ✅ Single consolidated effect:
+  useEffect(() => {
+    const initializeHomeData = async () => {
+      if (!user?.id) return;
+
+      try {
+        console.log("🏠 Initializing home data for user:", user.id);
+
+        // Phase 1: Load cached data immediately (fast)
+        await Promise.all([
+          loadStoredPoints(),
+          loadUserAvatar(),
+          checkAndGetLocation(),
+        ]);
+
+        // Phase 2: Fetch fresh data (slower)
+        const [tasksResult, completedResult] = await Promise.allSettled([
+          fetchTasks(),
+          fetchCompletedTasks(),
+        ]);
+
+        console.log("✅ Home data initialization complete");
+      } catch (error) {
+        console.error("❌ Failed to load home data:", error);
+
+        // ✅ Load fallback data instead of leaving empty
+        try {
+          const cachedTasks = await AsyncStorage.getItem(`tasks_${user.id}`);
+          const cachedCompleted = await AsyncStorage.getItem(
+            `completedTasks_${user.id}`
+          );
+          const cachedPoints = await AsyncStorage.getItem(
+            `userTotalPoints_${user.id}`
+          );
+
+          if (cachedTasks && tasks.length === 0) {
+            setTasks(JSON.parse(cachedTasks));
+          }
+          if (cachedCompleted && completedTasksData.length === 0) {
+            setCompletedTasks(JSON.parse(cachedCompleted));
+          }
+          if (cachedPoints) {
+            setUserTotalPoints(parseInt(cachedPoints, 10));
+          }
+
+          console.log("📱 Loaded fallback data from cache");
+        } catch (cacheError) {
+          console.log("No cached data available");
+        }
+      }
+    };
+
+    initializeHomeData();
+  }, [user?.id]); // ✅ Only depend on user.id
+
+  // ✅ ADD this effect to auto-calculate points when completed tasks change:
+  useEffect(() => {
+    // Calculate points from completed tasks data (even if it's empty)
+    const totalPoints = completedTasksData.reduce((sum: number, task: any) => {
+      return sum + (task.pointsReward || 1);
+    }, 0);
+
+    console.log(
+      "🎯 Auto-calculated points from completed tasks:",
+      totalPoints,
+      "from",
+      completedTasksData.length,
+      "tasks"
+    );
+
+    setUserTotalPoints(totalPoints);
+
+    // Store in AsyncStorage if user exists
+    if (user?.id) {
+      AsyncStorage.setItem(
+        `userTotalPoints_${user.id}`,
+        totalPoints.toString()
+      );
+    }
+  }, [completedTasksData, user?.id]); // Trigger when completed tasks change
 
   return (
     <View style={styles.container}>
@@ -465,18 +796,93 @@ const HomeScreen = () => {
           <TouchableOpacity onPress={() => router.push("/profile")}>
             <View style={styles.profileImageContainer}>
               <Image
-                source={{ uri: user?.imageUrl }}
+                source={{
+                  uri: avatarUrl || user?.imageUrl || undefined, // Use Cloudinary URL first
+                }}
                 style={styles.profileImage}
+                onError={() => {
+                  console.log(
+                    "Failed to load avatar, falling back to Clerk image"
+                  );
+                  // Could set a fallback here if needed
+                }}
               />
               <View style={styles.onlineIndicator} />
             </View>
           </TouchableOpacity>
           <View style={styles.headerText}>
             <Text style={styles.welcomeText}>Welcome Back 👋</Text>
-            <Text style={styles.userName}>{user?.firstName}!</Text>
+            {/* ✅ Check metadata first, then fallback to Clerk built-ins */}
+            <Text style={styles.userName}>
+              {(() => {
+                // Try to get the full name from metadata
+                const fullName = user?.unsafeMetadata?.fullName as string;
+                if (fullName && fullName.trim()) {
+                  return fullName;
+                }
+
+                // Try firstName + lastName from metadata
+                const firstName =
+                  (user?.unsafeMetadata?.firstName as string) || "";
+                const lastName =
+                  (user?.unsafeMetadata?.lastName as string) || "";
+                const metadataName = `${firstName} ${lastName}`.trim();
+                if (metadataName) {
+                  return metadataName;
+                }
+
+                // Try Clerk's built-in name fields (if they exist)
+                const clerkName = `${user?.firstName || ""} ${
+                  user?.lastName || ""
+                }`.trim();
+                if (clerkName) {
+                  return clerkName;
+                }
+
+                // Fallback to email or "User"
+                return (
+                  user?.emailAddresses?.[0]?.emailAddress?.split("@")[0] ||
+                  "User"
+                );
+              })()}
+            </Text>
           </View>
         </View>
         <View style={styles.headerIcons}>
+          {/* Yellow ribbon icon - first */}
+          <TouchableOpacity
+            style={styles.ribbonButton}
+            onPress={async () => {
+              try {
+                const url = "https://stories.bringthemhomenow.net/";
+                console.log("🎗️ Opening ribbon website:", url);
+
+                // Check if the device can open URLs
+                const supported = await Linking.canOpenURL(url);
+
+                if (supported) {
+                  await Linking.openURL(url);
+                  console.log("✅ Successfully opened ribbon website");
+                } else {
+                  console.error("❌ Cannot open URL:", url);
+                  Alert.alert(
+                    "Unable to Open",
+                    "We couldn't open the link. Please check your internet connection and try again."
+                  );
+                }
+              } catch (error) {
+                console.error("❌ Error opening ribbon website:", error);
+                Alert.alert(
+                  "Error",
+                  "Something went wrong while trying to open the link. Please try again."
+                );
+              }
+            }}
+          >
+            <Text style={styles.ribbonIcon}>🎗️</Text>
+          </TouchableOpacity>
+
+          {/* Notifications - second */}
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => router.push("/notification")}
@@ -484,6 +890,8 @@ const HomeScreen = () => {
             <Ionicons name="notifications-outline" size={22} color="#333" />
             <View style={styles.notificationBadge} />
           </TouchableOpacity>
+
+          {/* Settings - third */}
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => router.push("/settings")}
@@ -499,41 +907,87 @@ const HomeScreen = () => {
         <MilestoneProgressBar points={userTotalPoints} maxPoints={maxPoints} />
       </View>
 
-      {/* Clean Modern Tabs - Move to top area */}
-      <View style={styles.modernTabSection}>
-        <View style={styles.tabContainer}>
-          {[
-            { key: "new", label: "New", count: newTasks.length },
-            { key: "assigned", label: "Assigned", count: assignedTasks.length },
-            {
-              key: "complete",
-              label: "Complete",
-              count: completedTasks.length,
-            },
-          ].map((tabItem) => (
-            <TouchableOpacity
-              key={tabItem.key}
-              onPress={() => setTab(tabItem.key as any)}
-              style={[
-                styles.modernTab,
-                tab === tabItem.key && styles.modernTabActive,
-              ]}
-            >
+      {/* Modern Tab Navigation - Same as Organization Feed */}
+      <View style={styles.modernTabContainer}>
+        <View style={styles.tabRow}>
+          <TouchableOpacity
+            onPress={() => setTab("new")}
+            style={[styles.tab, tab === "new" && styles.tabActive]}
+          >
+            <View style={styles.tabContent}>
+              <Ionicons
+                name="add-circle-outline"
+                size={18}
+                color={tab === "new" ? "#fff" : "#666"}
+              />
               <Text
-                style={[
-                  styles.modernTabText,
-                  tab === tabItem.key && styles.modernTabTextActive,
-                ]}
+                style={[styles.tabText, tab === "new" && styles.tabTextActive]}
               >
-                {tabItem.label}
+                New
               </Text>
-              {tabItem.count > 0 && (
-                <View style={styles.cleanBadge}>
-                  <Text style={styles.cleanBadgeText}>{tabItem.count}</Text>
+              {newTasks.length > 0 && (
+                <View style={styles.tabBadge}>
+                  <Text style={styles.tabBadgeText}>{newTasks.length}</Text>
                 </View>
               )}
-            </TouchableOpacity>
-          ))}
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setTab("assigned")}
+            style={[styles.tab, tab === "assigned" && styles.tabActive]}
+          >
+            <View style={styles.tabContent}>
+              <Ionicons
+                name="person-outline"
+                size={18}
+                color={tab === "assigned" ? "#fff" : "#666"}
+              />
+              <Text
+                style={[
+                  styles.tabText,
+                  tab === "assigned" && styles.tabTextActive,
+                ]}
+              >
+                Assigned
+              </Text>
+              {assignedTasks.length > 0 && (
+                <View style={styles.tabBadge}>
+                  <Text style={styles.tabBadgeText}>
+                    {assignedTasks.length}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setTab("complete")}
+            style={[styles.tab, tab === "complete" && styles.tabActive]}
+          >
+            <View style={styles.tabContent}>
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={18}
+                color={tab === "complete" ? "#fff" : "#666"}
+              />
+              <Text
+                style={[
+                  styles.tabText,
+                  tab === "complete" && styles.tabTextActive,
+                ]}
+              >
+                Complete
+              </Text>
+              {completedTasks.length > 0 && (
+                <View style={styles.tabBadge}>
+                  <Text style={styles.tabBadgeText}>
+                    {completedTasks.length}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -701,9 +1155,14 @@ const HomeScreen = () => {
             ) : (
               <TaskCard
                 task={item}
-                onSignUp={handleSignUp}
-                onComplete={handleTaskComplete}
-                onTaskUpdate={fetchTasks}
+                onSignUp={() => handleSignUp(item._id)}
+                onTaskUpdate={async () => {
+                  console.log("🔄 Home: Refreshing all task data...");
+                  // ✅ Refresh both regular tasks and completed tasks after completion
+                  await Promise.all([fetchTasks(), fetchCompletedTasks()]);
+
+                  console.log("✅ Home: All task data refreshed");
+                }}
               />
             )
           }
@@ -1045,28 +1504,25 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   /* Clean Modern Tabs - Move to top area */
-  modernTabSection: {
+  modernTabContainer: {
     backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-    paddingTop: 8,
-    paddingBottom: 4,
-    zIndex: 10,
-  },
-  tabContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
     paddingHorizontal: 20,
+    paddingVertical: 16,
   },
-  modernTab: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 12,
+  tabRow: {
+    flexDirection: "row",
+    backgroundColor: "#f8f9fa",
     borderRadius: 12,
-    marginHorizontal: 4,
-    position: "relative",
+    padding: 4,
   },
-  modernTabActive: {
+  tab: {
+    flex: 1,
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    marginHorizontal: 2, // Add small margin between tabs
+  },
+  tabActive: {
     backgroundColor: "#FF9800",
     shadowColor: "#FF9800",
     shadowOpacity: 0.3,
@@ -1074,30 +1530,39 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
   },
-  modernTabText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#666",
-  },
-  modernTabTextActive: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  cleanBadge: {
-    backgroundColor: "#FF4757",
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
+  tabContent: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 4,
-    position: "absolute",
-    top: -4,
-    right: -4,
+    position: "relative",
+    minHeight: 24, // Ensure minimum height
   },
-  cleanBadgeText: {
+  tabText: {
+    color: "#666",
+    fontWeight: "600",
+    fontSize: 13, // Slightly smaller font
+    marginLeft: 4, // Reduce margin
+    textAlign: "center",
+  },
+  tabTextActive: {
     color: "#fff",
-    fontSize: 10,
+  },
+  tabBadge: {
+    position: "absolute",
+    top: -12, // Move higher up
+    right: -6, // Adjust right position
+    backgroundColor: "#ff4757",
+    borderRadius: 10,
+    minWidth: 18, // Slightly smaller
+    height: 18, // Slightly smaller
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4, // Reduce padding
+    zIndex: 10, // Ensure it's above other elements
+  },
+  tabBadgeText: {
+    color: "#fff",
+    fontSize: 10, // Smaller font
     fontWeight: "bold",
   },
   /* Tasks Section - Now takes full space */
@@ -1177,5 +1642,40 @@ const styles = StyleSheet.create({
     backgroundColor: "#4CAF50",
     borderWidth: 1,
     borderColor: "#fff",
+  },
+  testSection: {
+    backgroundColor: "#fff3cd",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ffeaa7",
+  },
+  testButton: {
+    backgroundColor: "#6c5ce7",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 40,
+  },
+  testButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  ribbonButton: {
+    width: 40, // ✅ Same as iconButton width
+    height: 40, // ✅ Same as iconButton height
+    borderRadius: 20, // ✅ Same as iconButton borderRadius
+    backgroundColor: "#f8f9fa", // ✅ Same as iconButton backgroundColor
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 8, // ✅ Same as iconButton marginLeft
+    position: "relative", // ✅ Same as iconButton position
+  },
+
+  ribbonIcon: {
+    fontSize: 18, // ✅ Keep the emoji size consistent
   },
 });

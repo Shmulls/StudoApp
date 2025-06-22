@@ -14,7 +14,7 @@ import {
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 
 // Google Places API configuration
-const GOOGLE_PLACES_API_KEY = "AIzaSyAjyYxXChjy1vRsJqanVMJxjieY1cOCHLA";
+const GOOGLE_PLACES_API_KEY = process.env.EXPO_PUBLIC_LOCATION_API_KEY;
 
 type NewTask = {
   title: string;
@@ -34,6 +34,7 @@ type AddTaskModalProps = {
   setNewTask: React.Dispatch<React.SetStateAction<NewTask>>;
   onClose: () => void;
   onCreate: () => void;
+  user?: any; // Add user prop
 };
 
 type PlaceSuggestion = {
@@ -52,6 +53,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   setNewTask,
   onClose,
   onCreate,
+  user, // Add user prop
 }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [query, setQuery] = useState("");
@@ -78,8 +80,12 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
       if (data.status === "OK") {
         return data.predictions || [];
+      } else if (data.status === "ZERO_RESULTS") {
+        // This is normal - just means no results found for the search term
+        console.log("No results found for:", input);
+        return [];
       } else {
-        console.error("Places API error:", data.status);
+        console.error("Places API error:", data.status, data.error_message);
         return [];
       }
     } catch (error) {
@@ -99,8 +105,15 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
       if (data.status === "OK") {
         return data.result;
+      } else if (data.status === "ZERO_RESULTS") {
+        console.log("No details found for place:", placeId);
+        return null;
       } else {
-        console.error("Place details API error:", data.status);
+        console.error(
+          "Place details API error:",
+          data.status,
+          data.error_message
+        );
         return null;
       }
     } catch (error) {
@@ -124,11 +137,12 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
     try {
       const results = await searchLocation(text);
       setSuggestions(results);
-    } catch (e) {
-      console.error("Search error:", e);
+    } catch (error) {
+      console.error("Search error:", error);
       setSuggestions([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleSelect = async (item: PlaceSuggestion) => {
@@ -182,6 +196,16 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
       Alert.alert("Missing Date", "Please select a date and time");
       return;
     }
+    if (!user?.id) {
+      Alert.alert("Error", "User not authenticated");
+      return;
+    }
+
+    const taskData = {
+      ...newTask,
+      createdBy: user.id, // This should be the organization ID
+    };
+
     onCreate();
   };
 
@@ -529,6 +553,16 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
                   </View>
                 </View>
 
+                {/* Search status display */}
+                {loading && query.length >= 3 && (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="small" color="#FF9800" />
+                    <Text style={styles.loadingText}>
+                      Searching locations...
+                    </Text>
+                  </View>
+                )}
+
                 {/* Location Suggestions - Now using ScrollView instead of FlatList */}
                 {suggestions.length > 0 && (
                   <View style={styles.suggestionsContainer}>
@@ -570,6 +604,22 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
                     </ScrollView>
                   </View>
                 )}
+
+                {/* No results message - only show if no location is selected */}
+                {query.length >= 3 &&
+                  suggestions.length === 0 &&
+                  !loading &&
+                  !newTask.locationLabel && (
+                    <View style={styles.noResultsContainer}>
+                      <Ionicons name="search" size={20} color="#999" />
+                      <Text style={styles.noResultsText}>
+                        No locations found for "{query}"
+                      </Text>
+                      <Text style={styles.noResultsSubtext}>
+                        Try a different search term or continue without location
+                      </Text>
+                    </View>
+                  )}
 
                 {/* Selected Location Display */}
                 {newTask.locationLabel && suggestions.length === 0 && (
@@ -835,6 +885,44 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     marginLeft: 8,
     flex: 1,
+  },
+  noResultsContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  noResultsText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#666",
+    textAlign: "center",
+    marginTop: 8,
+  },
+  noResultsSubtext: {
+    fontSize: 12,
+    color: "#999",
+    textAlign: "center",
+    marginTop: 4,
+  },
+  loadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: "#FF9800",
+    fontWeight: "500",
+    marginLeft: 8,
   },
   actionButtons: {
     flexDirection: "row",
