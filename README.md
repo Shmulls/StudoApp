@@ -2,7 +2,6 @@
 
 A modern cross-platform mobile application built with Expo and React Native, designed for task management and social collaboration. Our platform enables users to connect, collaborate, and complete tasks efficiently through an intuitive interface.
 
-// ...existing code...
 <GooglePlacesAutocomplete
 // ...other props...
 textInputProps={{
@@ -11,7 +10,6 @@ textInputProps={{
     // ...other props
   }}
 />
-// ...existing code..
 
 ## Features ✨
 
@@ -168,3 +166,21 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 Built by Studo Development Team
+
+## 📸 App Screenshots
+
+### Logo of the application
+
+<img src="assets/logo.png" alt="Studo Logo" width="250"/>
+
+### Login Page
+
+<img src="assets/login.png" alt="Login Page" width="250"/>
+
+### Student Feed
+
+<img src="assets/student-feed.png" alt="Student Feed" width="250"/>
+
+### Organization Feed
+
+<img src="assets/org-feed.png" alt="Organization Feed" width="250"/>
