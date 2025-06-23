@@ -1,5 +1,7 @@
 # Studo Development App 📱
 
+<img src="assets/logo.png" alt="Studo Logo" width="250"/>
+
 A modern cross-platform mobile application built with Expo and React Native, designed for task management and social collaboration. Our platform enables users to connect, collaborate, and complete tasks efficiently through an intuitive interface.
 
 <GooglePlacesAutocomplete
@@ -72,15 +74,24 @@ Before you begin, ensure you have the following installed:
 ## Project Structure 📁
 
 ```
-studo-app/
-├── app/                # Main application code
-│   ├── (tabs)/        # Tab-based navigation
-│   ├── auth/          # Authentication screens
-│   └── _layout.tsx    # Root layout configuration
-├── components/        # Reusable UI components
-├── server/           # Backend integration
-├── types/            # TypeScript definitions
-└── assets/          # Images, fonts, and other static files
+StudoApp/
+├── app/                # Main application code (Expo/React Native)
+│   ├── (tabs)/         # Tab-based navigation
+│   ├── auth/           # Authentication screens
+│   └── _layout.tsx     # Root layout configuration
+├── components/         # Reusable UI components
+├── hooks/              # Custom React hooks
+├── server/             # Backend (Node.js/Express/MongoDB)
+│   ├── models/         # Mongoose models
+│   ├── routes/         # Express route handlers
+│   ├── docker-compose.yml # Docker Compose setup for backend and database
+│   ├── .env.example    # Example environment variables for backend
+│   └── server.js       # Backend entry point
+├── types/              # TypeScript type definitions
+├── assets/             # Images, fonts, and other static files
+├── .env.example        # Example environment variables for frontend
+├── README.md           # Project documentation
+└── package.json        # Project metadata and scripts
 ```
 
 ## Development Guide 💻
@@ -119,7 +130,13 @@ npm run test          # Run tests
   - Express
 
 - **Authentication**
+
   - Clerk
+
+- **DevOps & Tooling**
+  - **Docker** – Containerization for backend and database
+  - **GitHub Actions** – CI/CD for automated testing and deployment
+  - **ngrok** – Secure tunneling for local development
 
 ## Documentation 📚
 
@@ -129,6 +146,9 @@ For detailed documentation, please refer to:
 - [React Native Documentation](https://reactnative.dev/)
 - [Clerk Documentation](https://clerk.dev/docs)
 - [MongoDB Documentation](https://docs.mongodb.com/)
+- [Docker Documentation](https://docs.docker.com/)
+- [GitHub Actions Documentation](https://docs.github.com/en/actions)
+- [ngrok Documentation](https://ngrok.com/docs)
 
 ## Contributing 🤝
 
@@ -165,13 +185,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-Built by Studo Development Team
-
 ## 📸 App Screenshots
-
-### Logo of the application
-
-<img src="assets/logo.png" alt="Studo Logo" width="250"/>
 
 ### Login Page
 
@@ -184,3 +198,7 @@ Built by Studo Development Team
 ### Organization Feed
 
 <img src="assets/org-feed.png" alt="Organization Feed" width="250"/>
+
+---
+
+Built by Studo Development Team
