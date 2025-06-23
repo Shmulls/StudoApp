@@ -142,7 +142,8 @@ describe("AddTaskModal", () => {
       title: "Test",
       description: "Test desc",
       time: new Date().toISOString(),
-      locationLabel: "Test Location", // Add any other required fields here
+      locationLabel: "Test Location",
+      // Add any other required fields here
     };
     const { getByText } = render(
       <AddTaskModal

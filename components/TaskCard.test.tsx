@@ -62,7 +62,7 @@ describe("TaskCard", () => {
 
   it("shows Complete and Cancel buttons when signedUp is true", () => {
     const task = { ...mockTask, signedUp: true };
-    const { getByText } = render(<TaskCard task={task} />);
-    expect(getByText("Complete")).toBeTruthy();
+    const { getByTestId } = render(<TaskCard task={task} />);
+    expect(getByTestId("complete-task-btn")).toBeTruthy();
   });
 });
