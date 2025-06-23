@@ -16,7 +16,13 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
+      ],
+      "package": "com.shmuells.expoclerksociallogin"
     },
     "web": {
       "bundler": "metro",
@@ -32,10 +38,33 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app needs access to your photos to let you choose a profile picture."
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Allow $(PRODUCT_NAME) to access your calendar."
+        }
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "EXPO_PUBLIC_LOCATION_API_KEY": "AIzaSyAjyYxXChjy1vRsJqanVMJxjieY1cOCHLA",
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "6d073ad7-adc0-4c55-9c80-833430242731"
+      }
+    },
+    "sdkVersion": "53.0.0"
   }
 }

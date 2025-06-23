@@ -2,6 +2,17 @@
 
 A modern cross-platform mobile application built with Expo and React Native, designed for task management and social collaboration. Our platform enables users to connect, collaborate, and complete tasks efficiently through an intuitive interface.
 
+// ...existing code...
+<GooglePlacesAutocomplete
+// ...other props...
+textInputProps={{
+    onFocus: () => {}, // Provide a default no-op if you don't need custom logic
+    onBlur: () => {},
+    // ...other props
+  }}
+/>
+// ...existing code..
+
 ## Features ✨
 
 - Social authentication with multiple providers

@@ -1,45 +1,116 @@
 import { useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Alert,
+  Animated,
+  Dimensions,
   FlatList,
   Image,
+  Linking, // ✅ Add this import
+  Modal,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { fetchTasks, updateTask } from "../../../api";
+import "react-native-get-random-values";
+import { deleteTask, fetchOrganizationTasks, updateTask } from "../../../api";
+import AddTaskModal from "../../../components/AddTaskModal";
+import OrgStatistics from "../../../components/OrgStatistics";
 import { Task } from "../../../types/task";
 
+const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+
+// Update the NewTask type to match AddTaskModal expectations
+type NewTask = {
+  title: string;
+  description: string;
+  location: { type: "Point"; coordinates: [number, number] } | null;
+  locationLabel: string;
+  time: string;
+  signedUp: boolean;
+  pointsReward: number; // Add this field
+  estimatedHours: number; // Add this field
+};
+
 const Organization = () => {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [addTaskVisible, setAddTaskVisible] = useState(false);
+  const [newTask, setNewTask] = useState<NewTask>({
+    title: "",
+    description: "",
+    location: null,
+    locationLabel: "",
+    time: "",
+    signedUp: false,
+    pointsReward: 1, // Add default value
+    estimatedHours: 1, // Add default value
+  });
+  const [creating, setCreating] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [orgTab, setOrgTab] = useState<"pending" | "completed" | "statistics">(
+    "pending"
+  );
+  const [tab, setTab] = useState<"day" | "week" | "month" | "year">("year");
   const closedTasksRef = useRef<LottieView>(null);
   const openTasksRef = useRef<LottieView>(null);
+  const [userModalVisible, setUserModalVisible] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<{
+    name: string;
+    image: string;
+  } | null>(null);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [popoverVisible, setPopoverVisible] = useState(false);
+  const [popoverTaskId, setPopoverTaskId] = useState<string | null>(null);
+  const [popoverPosition, setPopoverPosition] = useState<{
+    x: number;
+    y: number;
+  }>({ x: 0, y: 0 });
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  const POPUP_WIDTH = 200;
+  const screenWidth = Dimensions.get("window").width;
+  const popoverLeft = Math.min(
+    Math.max(popoverPosition.x - POPUP_WIDTH / 2, 8),
+    screenWidth - POPUP_WIDTH - 8
+  );
 
   // Check if the user has the correct role
   useEffect(() => {
+    if (!isLoaded) return; // Wait until Clerk user is loaded
     if (user?.unsafeMetadata?.role !== "organization") {
       router.push("/auth/not-authorized"); // Redirect unauthorized users
     }
-  }, [user]);
+  }, [user, isLoaded]);
 
   // Fetch tasks from the backend
   useEffect(() => {
-    const getTasks = async () => {
+    const fetchTasks = async () => {
+      if (!user?.id) return; // ✅ This already checks for null/undefined
+
+      setRefreshing(true);
       try {
-        const { data } = await fetchTasks(); // Fetch tasks from the backend
+        console.log("🔄 Fetching tasks for organization:", user.id);
+
+        const data = await fetchOrganizationTasks(user.id);
+        console.log("📋 Fetched tasks for this organization:", data.length);
         setTasks(data);
       } catch (error) {
-        console.error("Error fetching tasks:", error);
+        console.error("❌ Error fetching tasks:", error);
+      } finally {
+        setRefreshing(false);
       }
     };
 
-    getTasks();
-  }, []);
+    fetchTasks();
+  }, [user?.id]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -75,92 +146,639 @@ const Organization = () => {
     }
   };
 
+  const handleCreateTask = async () => {
+    if (!user?.id) {
+      Alert.alert("Error", "User not authenticated");
+      return;
+    }
+
+    if (
+      !newTask.title ||
+      !newTask.description ||
+      !newTask.location ||
+      !newTask.time
+    ) {
+      alert("Please fill all fields and select a location.");
+      return;
+    }
+
+    setCreating(true);
+    try {
+      console.log("🎯 Creating task with data:", newTask);
+
+      const taskData = {
+        ...newTask,
+        createdBy: user.id, // ✅ Make sure this is the organization's user ID
+      };
+
+      console.log("📡 Sending task data:", taskData);
+      console.log("🏢 Organization ID (createdBy):", user.id); // ✅ Add this log
+
+      const response = await fetch(`${API_URL}/tasks`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(taskData),
+      });
+
+      console.log("📡 Response status:", response.status);
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log("✅ Task created:", result);
+
+        setNewTask({
+          title: "",
+          description: "",
+          location: null,
+          locationLabel: "",
+          time: "",
+          signedUp: false,
+          pointsReward: 1,
+          estimatedHours: 1,
+        });
+        setAddTaskVisible(false);
+
+        // ✅ Refresh with null check
+        const refreshedData = await fetchOrganizationTasks(user.id);
+        setTasks(refreshedData);
+
+        Alert.alert("Success", "Task created successfully!");
+      } else {
+        const errorData = await response.json();
+        console.error("❌ Task creation failed:", errorData);
+        Alert.alert("Error", errorData.message || "Failed to create task");
+      }
+    } catch (error) {
+      console.error("❌ Network error:", error);
+      Alert.alert("Error", "Network error. Please check your connection.");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const openCount = tasks.filter((t) => !t.completed).length;
+  const closedCount = tasks.filter((t) => t.completed).length;
+  const returnCount = 0; // Replace with your logic
+  const total = openCount + closedCount + returnCount;
+  const percent = "+12%"; // Replace with your logic
+  const yearChartLabels = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  const yearChartData = [5, 8, 6, 10, 12, 7, 9, 11, 8, 10, 7, 12]; // Replace with your real data
+
+  const monthChartLabels = ["Week 1", "Week 2", "Week 3", "Week 4"];
+  const monthChartData = [2, 4, 3, 5];
+
+  useEffect(() => {
+    // Animate pulse when a user is newly assigned
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.15,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
+
+  const handleDeleteTask = async (taskId: string | null) => {
+    if (!taskId) return;
+    try {
+      await deleteTask(taskId);
+      setTasks((prev) => prev.filter((task) => task._id !== taskId));
+      setPopoverVisible(false);
+    } catch (error) {
+      alert("Failed to delete task.");
+    }
+  };
+  const onRefresh = async () => {
+    if (!user?.id) return; // ✅ Add this null check
+
+    setRefreshing(true);
+    try {
+      const data = await fetchOrganizationTasks(user.id);
+      setTasks(data);
+    } catch (error) {
+      console.error("Error refreshing tasks:", error);
+    }
+    setRefreshing(false);
+  };
+
+  // Add avatar state
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  // Load avatar from AsyncStorage
+  useEffect(() => {
+    const loadOrganizationAvatar = async (userParam: any) => {
+      try {
+        // First try AsyncStorage
+        const storedAvatarUrl = await AsyncStorage.getItem(
+          "organizationAvatarUrl"
+        );
+        if (storedAvatarUrl) {
+          setAvatarUrl(storedAvatarUrl);
+          console.log(
+            "🏢 Organization: Loaded avatar from storage:",
+            storedAvatarUrl
+          );
+          return;
+        }
+
+        // Then try user metadata
+        const metadataAvatar = userParam?.unsafeMetadata?.avatarUrl as string;
+        if (metadataAvatar) {
+          setAvatarUrl(metadataAvatar);
+          console.log(
+            "🏢 Organization: Loaded avatar from metadata:",
+            metadataAvatar
+          );
+        }
+      } catch (error) {
+        console.log("Could not load organization avatar:", error);
+      }
+    };
+
+    if (user) {
+      loadOrganizationAvatar(user);
+    }
+  }, [user]);
+
+  // Update the profile image in your header
+  if (!isLoaded) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
+  // Add this helper function at the top of your component, after the imports
+  const getCreationTimeFromObjectId = (objectId: string): number => {
+    try {
+      // First 4 bytes of ObjectId represent creation timestamp
+      return parseInt(objectId.substring(0, 8), 16) * 1000;
+    } catch {
+      return 0;
+    }
+  };
+
+  // Add this temporarily to debug
+  useEffect(() => {
+    console.log("🔍 DEBUG - Current user ID:", user?.id);
+    console.log("🔍 DEBUG - User role:", user?.unsafeMetadata?.role);
+    console.log(
+      "🔍 DEBUG - Organization name:",
+      user?.unsafeMetadata?.organizationName
+    );
+  }, [user]);
+
   return (
     <View style={styles.container}>
-      <Text>✅ You are in the Organization Feed</Text>
-      {/* Header Section */}
+      {/* Modern Header Section */}
       <View style={styles.header}>
-        <Image source={{ uri: user?.imageUrl }} style={styles.profileImage} />
-        <View style={styles.headerIcons}>
-          {/* Notification Icon */}
-          <TouchableOpacity onPress={() => router.push("/notification")}>
-            <Ionicons
-              name="notifications-outline"
-              size={30}
-              color="#333"
-              style={styles.icon}
-            />
-          </TouchableOpacity>
-          {/* Settings Icon */}
+        <View style={styles.headerLeft}>
           <TouchableOpacity
-            onPress={() => router.push("/organization-settings")}
+            onPress={() => router.push("/organization-profile")}
           >
-            <Ionicons
-              name="settings-outline"
-              size={30}
-              color="#333"
-              style={styles.icon}
-            />
+            <View style={styles.profileImageContainer}>
+              <Image
+                source={{
+                  uri: avatarUrl || user?.imageUrl || undefined,
+                }}
+                style={styles.profileImage}
+                onError={() => {
+                  console.log("Failed to load organization avatar");
+                  setAvatarUrl(null);
+                }}
+              />
+              <View style={styles.onlineIndicator} />
+            </View>
+          </TouchableOpacity>
+          <View style={styles.headerText}>
+            <Text style={styles.welcomeText}>Welcome Back 👋</Text>
+            <Text style={styles.userName}>
+              {String(user?.unsafeMetadata?.organizationName || "Organization")}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.headerIcons}>
+          {/* Yellow ribbon icon - first */}
+          <TouchableOpacity
+            style={styles.ribbonButton}
+            onPress={async () => {
+              try {
+                const url = "https://stories.bringthemhomenow.net/";
+                console.log("🎗️ Organization: Opening ribbon website:", url);
+
+                // Check if the device can open URLs
+                const supported = await Linking.canOpenURL(url);
+
+                if (supported) {
+                  await Linking.openURL(url);
+                  console.log(
+                    "✅ Organization: Successfully opened ribbon website"
+                  );
+                } else {
+                  console.error("❌ Organization: Cannot open URL:", url);
+                  Alert.alert(
+                    "Unable to Open",
+                    "We couldn't open the link. Please check your internet connection and try again."
+                  );
+                }
+              } catch (error) {
+                console.error(
+                  "❌ Organization: Error opening ribbon website:",
+                  error
+                );
+                Alert.alert(
+                  "Error",
+                  "Something went wrong while trying to open the link. Please try again."
+                );
+              }
+            }}
+          >
+            <Text style={styles.ribbonIcon}>🎗️</Text>
+          </TouchableOpacity>
+
+          {/* Notifications - second */}
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => router.push("/organization-notification")}
+          >
+            <Ionicons name="notifications-outline" size={22} color="#333" />
+            <View style={styles.notificationBadge} />
+          </TouchableOpacity>
+
+          {/* Settings - third */}
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => router.push("/settings")}
+          >
+            <Ionicons name="settings-outline" size={22} color="#333" />
+          </TouchableOpacity>
+
+          {/* Add task - fourth */}
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => setAddTaskVisible(true)}
+          >
+            <Ionicons name="add" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Statistics Bar */}
-      <View style={styles.statisticsBar}>
-        <View style={styles.statisticsItem}>
-          <LottieView
-            ref={closedTasksRef}
-            source={require("../../../assets/images/closed-tasks.json")} // Path to your Lottie JSON file
-            autoPlay
-            loop={false}
-            style={styles.lottieIcon}
-          />
-          <Text style={styles.statisticsLabel}>Closed Tasks</Text>
-          <Text style={styles.statisticsValue}>2</Text>
-        </View>
-        <View style={styles.statisticsItem}>
-          <LottieView
-            ref={openTasksRef}
-            source={require("../../../assets/images/opened-tasks.json")} // Path to your Lottie JSON file
-            autoPlay
-            loop={false}
-            style={styles.lottieIcon}
-          />
-          <Text style={styles.statisticsLabel}>Open Tasks</Text>
-          <Text style={styles.statisticsValue}>{tasks.length}</Text>
-        </View>
-      </View>
-
-      {/* Task Section */}
-      <Text style={styles.tasksTitle}>
-        Volunteers related to my organization
-      </Text>
-      <FlatList
-        data={tasks}
-        keyExtractor={(item) => item._id}
-        renderItem={({ item }) => (
-          <View style={styles.taskCard}>
-            <View style={styles.taskInfo}>
-              <Text style={styles.taskTitle}>{item.title}</Text>
-              <Text style={styles.taskDescription}>{item.description}</Text>
-              <Text style={styles.taskDetails}>
-                <Text style={styles.bold}>📍 {item.location}</Text>{" "}
-                <Text style={styles.bold}>⏰ {item.time}</Text>
+      {/* Modern Tab Navigation */}
+      <View style={styles.modernTabContainer}>
+        <View style={styles.tabRow}>
+          <TouchableOpacity
+            onPress={() => setOrgTab("pending")}
+            style={[styles.tab, orgTab === "pending" && styles.tabActive]}
+          >
+            <View style={styles.tabContent}>
+              <Ionicons
+                name="time-outline"
+                size={18}
+                color={orgTab === "pending" ? "#fff" : "#666"}
+              />
+              <Text
+                style={[
+                  styles.tabText,
+                  orgTab === "pending" && styles.tabTextActive,
+                ]}
+              >
+                Pending
+              </Text>
+              {tasks.filter((t) => !t.completed).length > 0 && (
+                <View style={styles.tabBadge}>
+                  <Text style={styles.tabBadgeText}>
+                    {tasks.filter((t) => !t.completed).length}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setOrgTab("completed")}
+            style={[styles.tab, orgTab === "completed" && styles.tabActive]}
+          >
+            <View style={styles.tabContent}>
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={18}
+                color={orgTab === "completed" ? "#fff" : "#666"}
+              />
+              <Text
+                style={[
+                  styles.tabText,
+                  orgTab === "completed" && styles.tabTextActive,
+                ]}
+              >
+                Completed
+              </Text>
+              {tasks.filter((t) => t.completed).length > 0 && (
+                <View style={styles.tabBadge}>
+                  <Text style={styles.tabBadgeText}>
+                    {tasks.filter((t) => t.completed).length}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setOrgTab("statistics")}
+            style={[styles.tab, orgTab === "statistics" && styles.tabActive]}
+          >
+            <View style={styles.tabContent}>
+              <Ionicons
+                name="analytics-outline"
+                size={18}
+                color={orgTab === "statistics" ? "#fff" : "#666"}
+              />
+              <Text
+                style={[
+                  styles.tabText,
+                  orgTab === "statistics" && styles.tabTextActive,
+                ]}
+              >
+                Statistics
               </Text>
             </View>
-            <TouchableOpacity
-              style={[
-                styles.taskButton,
-                item.signedUp && styles.taskButtonCompleted,
-              ]}
-              onPress={() => handleSignUp(item._id)}
-            >
-              <Text style={styles.taskButtonText}>
-                {item.signedUp ? "Completed" : "Pending"}
-              </Text>
-            </TouchableOpacity>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {orgTab === "pending" && (
+        <View style={styles.contentContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Pending Tasks</Text>
+            <Text style={styles.sectionSubtitle}>
+              {tasks.filter((t) => !t.completed).length} active tasks
+            </Text>
           </View>
-        )}
+          <FlatList
+            data={tasks
+              .filter((t) => !t.completed)
+              .sort((a, b) => {
+                // Sort by creation time from ObjectId (newest first)
+                const timeA = getCreationTimeFromObjectId(a._id);
+                const timeB = getCreationTimeFromObjectId(b._id);
+                return timeB - timeA; // Newest first
+              })}
+            keyExtractor={(item) => item._id}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                activeOpacity={0.95}
+                onPressIn={() => setActiveTaskId(item._id)}
+                onPressOut={() => setActiveTaskId(null)}
+                style={[
+                  styles.modernTaskCard,
+                  activeTaskId === item._id && styles.taskCardActive,
+                ]}
+              >
+                <View style={styles.taskCardHeader}>
+                  <View style={styles.taskPriority} />
+                  <View style={styles.taskMainContent}>
+                    <Text style={styles.modernTaskTitle} numberOfLines={2}>
+                      {item.title}
+                    </Text>
+                    <View style={styles.taskTimeContainer}>
+                      <Ionicons name="time-outline" size={14} color="#666" />
+                      <Text style={styles.modernTaskTime}>
+                        {item.time
+                          ? new Date(item.time).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "No time set"}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.taskActions}>
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => handleDeleteTask(item._id)}
+                    >
+                      <Ionicons
+                        name="trash-outline"
+                        size={18}
+                        color="#ff4757"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <Text style={styles.modernTaskDescription} numberOfLines={2}>
+                  {item.description}
+                </Text>
+
+                <View style={styles.taskCardFooter}>
+                  <View style={styles.locationContainer}>
+                    <Ionicons name="location-outline" size={16} color="#666" />
+                    <Text style={styles.modernLocationText} numberOfLines={1}>
+                      {item.locationLabel || "No location selected"}
+                    </Text>
+                  </View>
+                  <View style={styles.assigneeContainer}>
+                    {item.assignedUserImage ? (
+                      <TouchableOpacity
+                        style={styles.modernAvatarWrapper}
+                        onPress={() => {
+                          setSelectedUser({
+                            name: item.assignedUserName ?? "",
+                            image: item.assignedUserImage ?? "",
+                          });
+                          setUserModalVisible(true);
+                        }}
+                      >
+                        <Image
+                          source={{ uri: item.assignedUserImage }}
+                          style={styles.modernAvatar}
+                        />
+                        <View style={styles.avatarBadge} />
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.unassignedIndicator}>
+                        <Ionicons
+                          name="person-add-outline"
+                          size={16}
+                          color="#999"
+                        />
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            )}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Ionicons
+                  name="checkmark-done-outline"
+                  size={64}
+                  color="#ddd"
+                />
+                <Text style={styles.emptyStateTitle}>All caught up!</Text>
+                <Text style={styles.emptyStateSubtitle}>
+                  No pending tasks at the moment.
+                </Text>
+              </View>
+            }
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.flatListContent}
+          />
+        </View>
+      )}
+
+      {orgTab === "completed" && (
+        <View style={styles.contentContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Completed Tasks</Text>
+            <Text style={styles.sectionSubtitle}>
+              {tasks.filter((t) => t.completed).length} completed
+            </Text>
+          </View>
+          <FlatList
+            data={tasks
+              .filter((t) => t.completed)
+              .sort((a, b) => {
+                // Sort by creation time from ObjectId (newest first)
+                const timeA = getCreationTimeFromObjectId(a._id);
+                const timeB = getCreationTimeFromObjectId(b._id);
+                return timeB - timeA; // Newest first
+              })}
+            keyExtractor={(item) => item._id}
+            renderItem={({ item }) => (
+              <View style={styles.completedTaskCard}>
+                <View style={styles.completedHeader}>
+                  <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+                  <View style={styles.completedContent}>
+                    <Text style={styles.completedTaskTitle}>{item.title}</Text>
+                    <Text
+                      style={styles.completedTaskDescription}
+                      numberOfLines={1}
+                    >
+                      {item.description}
+                    </Text>
+                  </View>
+                  <Text style={styles.completedTime}>
+                    {item.time
+                      ? new Date(item.time).toLocaleDateString()
+                      : "No date"}
+                  </Text>
+                </View>
+              </View>
+            )}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Ionicons name="trophy-outline" size={64} color="#ddd" />
+                <Text style={styles.emptyStateTitle}>
+                  No completed tasks yet
+                </Text>
+                <Text style={styles.emptyStateSubtitle}>
+                  Complete some tasks to see them here.
+                </Text>
+              </View>
+            }
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.flatListContent}
+          />
+        </View>
+      )}
+
+      {orgTab === "statistics" && (
+        <OrgStatistics
+          open={openCount}
+          closed={closedCount}
+          percent={Math.round(
+            (closedCount / (openCount + closedCount || 1)) * 100
+          )}
+          chartData={getChartData(tab, tasks, user)}
+          chartLabels={getChartLabels(tab)}
+          tab={tab}
+          onTab={setTab}
+          averageCompletionTime={
+            closedCount > 0
+              ? tasks
+                  .filter((task) => task.completed)
+                  .reduce((acc, task) => {
+                    const taskDate = new Date(task.time);
+                    const now = new Date();
+                    const diffInHours =
+                      Math.abs(now.getTime() - taskDate.getTime()) / 3600000;
+                    return acc + (diffInHours > 0 ? diffInHours : 24);
+                  }, 0) / closedCount
+              : 0
+          }
+          overdueTasks={
+            tasks.filter(
+              (task) => !task.completed && new Date(task.time) < new Date()
+            ).length
+          }
+        />
+      )}
+
+      {/* Modern User Detail Modal */}
+      <Modal
+        visible={userModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setUserModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modernModalContent}>
+            {selectedUser && (
+              <>
+                <View style={styles.modalHeader}>
+                  <View style={styles.modalAvatarContainer}>
+                    <Image
+                      source={{ uri: selectedUser.image }}
+                      style={styles.modalAvatar}
+                    />
+                    <View style={styles.modalAvatarBadge} />
+                  </View>
+                  <Text style={styles.modalUserName}>{selectedUser.name}</Text>
+                  <Text style={styles.modalUserRole}>Task Assignee</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.modernCloseButton}
+                  onPress={() => setUserModalVisible(false)}
+                >
+                  <Text style={styles.modernCloseButtonText}>Close</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Updated Add Task Modal with user prop */}
+      <AddTaskModal
+        visible={addTaskVisible}
+        creating={creating}
+        newTask={newTask}
+        setNewTask={setNewTask}
+        onClose={() => setAddTaskVisible(false)}
+        onCreate={handleCreateTask}
+        user={user} // ✅ Add this line - pass the user prop
       />
     </View>
   );
@@ -171,144 +789,533 @@ export default Organization;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAD961",
-    padding: 20,
+    backgroundColor: "#f8f9fa",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 20,
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  profileImageContainer: {
+    position: "relative",
   },
   profileImage: {
-    width: 45,
-    height: 45,
-    borderRadius: 40,
-    borderColor: "#fff",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#f0f0f0",
+  },
+  onlineIndicator: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#4CAF50",
     borderWidth: 2,
-    marginTop: 25,
+    borderColor: "#fff",
+  },
+  headerText: {
+    marginLeft: 12,
+  },
+  welcomeText: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500",
+  },
+  userName: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#222",
+    marginTop: 2,
   },
   headerIcons: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 40,
   },
-  icon: {
-    marginLeft: 20,
-  },
-  menuIcon: {
-    fontSize: 24,
-    color: "#333",
-  },
-  progressContainer: {
-    marginBottom: 30,
-  },
-  progressTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  progressBar: {
-    borderColor: "#00000",
-    borderRadius: 5,
-    width: "100%",
-  },
-  tasksTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  taskCard: {
-    borderColor: "#000",
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 15,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 2,
-    flexDirection: "row",
-    justifyContent: "space-between",
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f8f9fa",
     alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 8,
+    position: "relative",
   },
-  taskInfo: {
-    flex: 1,
-    marginRight: 10,
-  },
-  taskTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 5,
-  },
-  taskDescription: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 5,
-  },
-  checkedICON: {
-    width: 30,
-    height: 30,
-  },
-  signupICON: {
-    // width: 50,
-    // height: 30,
-    right: 10,
-  },
-  taskDetails: {
-    fontSize: 12,
-    color: "#333",
-  },
-  bold: {
-    fontWeight: "bold",
-  },
-  taskButton: {
+  notificationBadge: {
     position: "absolute",
-    right: 20,
-    bottom: 8,
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#ff4757",
   },
-  taskButtonCompleted: {
-    backgroundColor: "#4CAF50",
-    borderRadius: 9,
+  addButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FF9800",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 8,
+    shadowColor: "#FF9800",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  modernTabContainer: {
+    backgroundColor: "#fff",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  tabRow: {
+    flexDirection: "row",
+    backgroundColor: "#f8f9fa",
+    borderRadius: 12,
     padding: 4,
   },
-  taskButtonText: {
+  tab: {
+    flex: 1,
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    marginHorizontal: 2, // Add small margin between tabs
+  },
+  tabActive: {
+    backgroundColor: "#FF9800",
+    shadowColor: "#FF9800",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  tabContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    minHeight: 24, // Ensure minimum height
+  },
+  tabText: {
+    color: "#666",
+    fontWeight: "600",
+    fontSize: 13, // Slightly smaller font
+    marginLeft: 4, // Reduce margin
+    textAlign: "center",
+  },
+  tabTextActive: {
     color: "#fff",
+  },
+  tabBadge: {
+    position: "absolute",
+    top: -12, // Move higher up
+    right: -6, // Adjust right position
+    backgroundColor: "#ff4757",
+    borderRadius: 10,
+    minWidth: 18, // Slightly smaller
+    height: 18, // Slightly smaller
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4, // Reduce padding
+    zIndex: 10, // Ensure it's above other elements
+  },
+  tabBadgeText: {
+    color: "#fff",
+    fontSize: 10, // Smaller font
     fontWeight: "bold",
   },
-  statisticsBar: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-    borderRadius: 15,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  statisticsItem: {
-    alignItems: "center",
+  contentContainer: {
     flex: 1,
+    paddingHorizontal: 20,
   },
-  statisticsLabel: {
+  sectionHeader: {
+    marginVertical: 20,
+  },
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#222",
+  },
+  sectionSubtitle: {
     fontSize: 14,
     color: "#666",
-    marginTop: 5,
+    marginTop: 4,
   },
-  statisticsValue: {
+  modernTaskCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+    borderLeftWidth: 4,
+    borderLeftColor: "#FF9800",
+  },
+  taskCardActive: {
+    borderLeftColor: "#ff4757",
+    transform: [{ scale: 0.98 }],
+  },
+  taskCardHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 12,
+  },
+  taskPriority: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#FF9800",
+    marginRight: 12,
+    marginTop: 6,
+  },
+  taskMainContent: {
+    flex: 1,
+  },
+  modernTaskTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#222",
+    marginBottom: 6,
+  },
+  taskTimeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  modernTaskTime: {
+    fontSize: 14,
+    color: "#666",
+    marginLeft: 6,
+    fontWeight: "500",
+  },
+  taskActions: {
+    alignItems: "center",
+  },
+  deleteButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#fff5f5",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modernTaskDescription: {
+    fontSize: 15,
+    color: "#555",
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  taskCardFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  locationContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 12,
+  },
+  modernLocationText: {
+    fontSize: 14,
+    color: "#666",
+    marginLeft: 8,
+    flex: 1,
+  },
+  assigneeContainer: {
+    alignItems: "center",
+  },
+  modernAvatarWrapper: {
+    position: "relative",
+  },
+  modernAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#f0f0f0",
+  },
+  avatarBadge: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#4CAF50",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  unassignedIndicator: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#f8f9fa",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#e0e0e0",
+    borderStyle: "dashed",
+  },
+  completedTaskCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+    borderLeftWidth: 4,
+    borderLeftColor: "#4CAF50",
+  },
+  completedHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  completedContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  completedTaskTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#222",
+    textDecorationLine: "line-through",
+    textDecorationColor: "#999",
+  },
+  completedTaskDescription: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 2,
+  },
+  completedTime: {
+    fontSize: 12,
+    color: "#999",
+    fontWeight: "500",
+  },
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+  },
+  emptyStateTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#333",
-    marginTop: 5,
+    color: "#222",
+    marginTop: 16,
   },
-  statisticsIcon: {
+  emptyStateSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 8,
+    textAlign: "center",
+  },
+  flatListContent: {
+    paddingBottom: 100,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modernModalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 24,
+    alignItems: "center",
+    minWidth: 280,
+    maxWidth: 320,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 10,
+  },
+  modalHeader: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  modalAvatarContainer: {
+    position: "relative",
+    marginBottom: 16,
+  },
+  modalAvatar: {
     width: 80,
     height: 80,
+    borderRadius: 40,
+    backgroundColor: "#f0f0f0",
   },
-  lottieIcon: {
-    width: 50,
-    height: 50,
+  modalAvatarBadge: {
+    position: "absolute",
+    bottom: 4,
+    right: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#4CAF50",
+    borderWidth: 3,
+    borderColor: "#fff",
+  },
+  modalUserName: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#222",
+    marginBottom: 4,
+  },
+  modalUserRole: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500",
+  },
+  modernCloseButton: {
+    backgroundColor: "#FF9800",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    minWidth: 120,
+  },
+  modernCloseButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+    textAlign: "center",
+  },
+  ribbonButton: {
+    width: 40, // ✅ Same as iconButton width
+    height: 40, // ✅ Same as iconButton height
+    borderRadius: 20, // ✅ Same as iconButton borderRadius
+    backgroundColor: "#f8f9fa", // ✅ Same as iconButton backgroundColor
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 8, // ✅ Same as iconButton marginLeft
+    position: "relative", // ✅ Same as iconButton position
+  },
+  ribbonIcon: {
+    fontSize: 18, // ✅ Keep the emoji size consistent
   },
 });
+
+function getChartLabels(tab: "day" | "week" | "month" | "year") {
+  const now = new Date();
+  if (tab === "year") {
+    return ["2021", "2022", "2023", "2024", "2025"];
+  } else if (tab === "month") {
+    const monthNames = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+    return Array.from({ length: 6 }, (_, i) => {
+      const monthIndex = (now.getMonth() - 5 + i + 12) % 12;
+      return monthNames[monthIndex];
+    });
+  } else if (tab === "week") {
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(now);
+      date.setDate(now.getDate() - 6 + i);
+      return date.getDate().toString();
+    });
+  } else if (tab === "day") {
+    return ["6AM", "9AM", "12PM", "3PM", "6PM", "9PM"];
+  }
+  return ["No Data"];
+}
+
+function getChartData(
+  tab: "day" | "week" | "month" | "year",
+  tasks: Task[],
+  user: any
+) {
+  const now = new Date();
+
+  if (tab === "year") {
+    // Only show real task growth based on actual tasks
+    const arr = Array(5).fill(0);
+    const year = now.getFullYear();
+    tasks.forEach((task) => {
+      const taskDate = new Date(task.time);
+      const taskYear = taskDate.getFullYear();
+      const idx = taskYear - (year - 4);
+      if (idx >= 0 && idx < 5) {
+        arr[idx]++;
+      }
+    });
+    return arr;
+  } else if (tab === "month") {
+    // Show real tasks over last 6 months
+    const arr = Array(6).fill(0);
+    tasks.forEach((task) => {
+      const taskDate = new Date(task.time);
+      const monthsDiff =
+        (now.getFullYear() - taskDate.getFullYear()) * 12 +
+        (now.getMonth() - taskDate.getMonth());
+      if (monthsDiff >= 0 && monthsDiff < 6) {
+        arr[5 - monthsDiff]++;
+      }
+    });
+    return arr; // Return real data only
+  } else if (tab === "week") {
+    // Show real daily task activity for the current week
+    const arr = Array(7).fill(0);
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - 6);
+
+    tasks.forEach((task) => {
+      const taskDate = new Date(task.time);
+      const daysDiff = Math.floor(
+        (taskDate.getTime() - startOfWeek.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      if (daysDiff >= 0 && daysDiff < 7) {
+        arr[daysDiff]++;
+      }
+    });
+    return arr; // Return real data only, no fake random data
+  } else if (tab === "day") {
+    // Show real task activity throughout the day
+    const arr = Array(6).fill(0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    tasks.forEach((task) => {
+      const taskDate = new Date(task.time);
+      if (taskDate.toDateString() === today.toDateString()) {
+        const period = Math.floor(taskDate.getHours() / 4);
+        if (period >= 0 && period < 6) arr[period]++;
+      }
+    });
+    return arr; // Return real data only
+  }
+  return [0]; // Return zero data instead of fake data
+}

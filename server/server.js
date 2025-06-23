@@ -1,8 +1,8 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const http = require("http"); // Import HTTP module
-const { Server } = require("socket.io"); // Import Socket.io
+const http = require("http");
+const { Server } = require("socket.io");
 require("dotenv").config();
 
 const app = express();
@@ -20,14 +20,13 @@ mongoose
   .then(() => console.log("Connected to MongoDB Atlas"))
   .catch((err) => console.error("Error connecting to MongoDB:", err));
 
-const notificationRoutes = require("./routes/notifications");
-app.use("/api/notifications", notificationRoutes);
-
 // Create an HTTP server and integrate it with socket.io
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // Allow all origins (update this for production)
+    origin: "*", // This should allow all origins
+    methods: ["GET", "POST", "PATCH", "DELETE"],
+    credentials: true,
   },
 });
 
@@ -38,15 +37,35 @@ app.set("io", io);
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
 
+  // Handle organization room joining
+  socket.on("join-organization", (userId) => {
+    socket.join(`org_${userId}`);
+    console.log(`User ${userId} joined organization room`);
+  });
+
+  // Handle organization room leaving
+  socket.on("leave-organization", (userId) => {
+    socket.leave(`org_${userId}`);
+    console.log(`User ${userId} left organization room`);
+  });
+
   socket.on("disconnect", () => {
     console.log("A user disconnected:", socket.id);
   });
 });
 
 // Routes
+const notificationRoutes = require("./routes/notifications");
+app.use("/api/notifications", notificationRoutes);
+
 const taskRoutes = require("./routes/tasks");
 app.use("/api/tasks", taskRoutes);
 
+const completedTasksRouter = require("./routes/completedtasks");
+app.use("/api", completedTasksRouter);
+
 // Start the server
 const PORT = process.env.PORT || 5001;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, "0.0.0.0", () =>
+  console.log(`Server running on port ${PORT}`)
+);

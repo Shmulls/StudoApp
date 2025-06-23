@@ -1,32 +1,42 @@
-import { useAuth } from "@clerk/clerk-expo";
-import { Redirect, Stack } from "expo-router";
+import { useAuth, useUser } from "@clerk/clerk-expo";
+import { Redirect, Stack, useRouter } from "expo-router";
+import { useEffect } from "react";
 
 export default function TabLayout() {
   const { isSignedIn } = useAuth();
+  const { user, isLoaded } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      if (user?.unsafeMetadata?.role === "organization") {
+        router.replace("/organization-feed");
+      } else {
+        router.replace("/home");
+      }
+    }
+  }, [isLoaded, isSignedIn, user, router]);
 
   if (!isSignedIn) {
     return <Redirect href="/auth" />;
   }
 
+  // Optionally, show a loading indicator while user is loading
+  if (!isLoaded) {
+    return null;
+  }
+
   return (
     <Stack
       screenOptions={{
-        headerShown: false, // Ensure headers are hidden if needed
+        headerShown: false,
       }}
     >
-      {/* Home Screen */}
       <Stack.Screen name="home/index" />
-      {/* Organization Feed Screen */}
-      <Stack.Screen name="organization-feed/index" />{" "}
-      {/* Organization Settings Screen */}
-      <Stack.Screen name="organization-settings/index" />
-      {/* Organization notification */}
-      <Stack.Screen name="organization-notification/index" />
-      {/* Settings Screen */}
+      <Stack.Screen name="organization-feed/index" />
+      <Stack.Screen name="organization-profile/index" />
       <Stack.Screen name="settings/index" />
-      {/* Settings Screen */}
       <Stack.Screen name="profile/index" />
-      {/* Notification Screen */}
       <Stack.Screen name="notification/index" />
     </Stack>
   );

@@ -35,7 +35,7 @@ const SocialLoginButton = ({
     try {
       setIsLoading(true);
       const { createdSessionId, setActive } = await startOAuthFlow({
-        redirectUrl: Linking.createURL("/dashboard", { scheme: "myapp" }),
+        redirectUrl: Linking.createURL("/home", { scheme: "myapp" }), // Changed this line
       });
 
       if (createdSessionId) {
@@ -52,14 +52,20 @@ const SocialLoginButton = ({
 
   return (
     <TouchableOpacity
+      testID="login-button"
       style={styles.container}
       onPress={onSocialLoginPress}
       disabled={isLoading}
     >
       {isLoading ? (
-        <ActivityIndicator size="small" color="black" />
+        <ActivityIndicator
+          testID="loading-indicator"
+          size="small"
+          color="black"
+        />
       ) : (
         <Image
+          testID="login-image"
           source={require("../assets/images/google-login.png")} // Adjust this path
           style={styles.image}
         />
