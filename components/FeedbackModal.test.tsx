@@ -52,9 +52,9 @@ describe("FeedbackModal", () => {
     expect(baseProps.onSubmit).toHaveBeenCalled();
   });
 
-  it("calls onSubmit when Submit Feedback is pressed", () => {
+  it("calls onSubmit when Complete is pressed", () => {
     const { getByText } = render(<FeedbackModal {...baseProps} />);
-    fireEvent.press(getByText("Submit Feedback"));
+    fireEvent.press(getByText("Complete"));
     expect(baseProps.onSubmit).toHaveBeenCalled();
   });
 

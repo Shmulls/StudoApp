@@ -56,7 +56,7 @@ describe("TaskCard", () => {
     const { getByText } = render(
       <TaskCard task={mockTask} onSignUp={onSignUp} />
     );
-    fireEvent.press(getByText("Register"));
+    fireEvent.press(getByText("Join Task"));
     expect(onSignUp).toHaveBeenCalledWith("task1");
   });
 

@@ -296,6 +296,7 @@ const TaskCard = ({
                   </TouchableOpacity>
 
                   <TouchableOpacity
+                    testID="complete-task-btn"
                     style={styles.completeButton}
                     onPress={handleCompletePress}
                     onPressIn={handlePressIn}
