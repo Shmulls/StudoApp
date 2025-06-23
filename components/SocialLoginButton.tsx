@@ -52,14 +52,20 @@ const SocialLoginButton = ({
 
   return (
     <TouchableOpacity
+      testID="login-button"
       style={styles.container}
       onPress={onSocialLoginPress}
       disabled={isLoading}
     >
       {isLoading ? (
-        <ActivityIndicator size="small" color="black" />
+        <ActivityIndicator
+          testID="loading-indicator"
+          size="small"
+          color="black"
+        />
       ) : (
         <Image
+          testID="login-image"
           source={require("../assets/images/google-login.png")} // Adjust this path
           style={styles.image}
         />
