@@ -143,8 +143,11 @@ describe("AddTaskModal", () => {
       description: "Test desc",
       time: new Date().toISOString(),
       locationLabel: "Test Location",
-      // Add any other required fields here
+      pointsReward: 2,
+      estimatedHours: 2,
     };
+    const mockUser = { id: "user123" };
+
     const { getByText } = render(
       <AddTaskModal
         visible={true}
@@ -153,6 +156,7 @@ describe("AddTaskModal", () => {
         setNewTask={setNewTask}
         onClose={onClose}
         onCreate={onCreate}
+        user={mockUser} // <-- Pass user prop
       />
     );
     fireEvent.press(getByText("Create Task"));
